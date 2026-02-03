@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Profi-Rüstplan | Live-Sync Edition</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-database-compat.js"></script>
+    
+    <style>
+        :root { --bg-main: #0f172a; --bg-sidebar: #1e293b; --accent: #3b82f6; }
+        body { background-color: var(--bg-main); color: #f1f5f9; transition: all 0.3s ease; }
+        .status-eingeplant { background-color: #334155; border-left: 4px solid #64748b; }
+        .status-stoerung { background-color: #7f1d1d; border-left: 4px solid #ef4444; color: #fee2e2; }
+        .status-erledigt { background-color: #064e3b; border-left: 4px solid #10b981; color: #d1fae5; }
+        #sidebar { width: 320px; transition: transform 0.3s ease, width 0.3s ease; position: relative; z-index: 30; }
+        .sidebar-collapsed { transform: translateX(-100%); width: 0 !important; margin-right: -320px; }
+        main { flex-grow: 1; transition: all 0.3s ease; width: 100%; }
+        .machine-badge { min-height: 30px; margin-bottom: 4px; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; border-radius: 6px; font-weight: 700; font-size: clamp(10px, 0.9vw, 13px); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3); }
+        .staff-header { font-size: 11px; font-weight: 900; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 6px; white-space: nowrap; }
+        .no-scroll-container { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+        #pwModal, #analysisModal { display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.9); z-index: 100; align-items: center; justify-content: center; backdrop-filter: blur(8px); }
+        .acc-content { display: none; }
+        .acc-active .acc-content { display: block; }
+        .locked-day { filter: grayscale(0.5) brightness(0.6); pointer-events: none; }
+        .locked-day .lock-btn { pointer-events: auto !important; }
+    </style>
+</head>
+<body class="h-screen overflow-hidden flex font-sans">
+
+    <div id="pwModal">
+        <div class="bg-slate-800 p-8 rounded-3xl shadow-2xl w-96 border border-slate-600 text-center">
+            <h3 class="text-xl font-black mb-6 uppercase italic">Bereich gesperrt</h3>
+            <input type="password" id="pwInput" class="w-full bg-slate-900 border-2 border-slate-700 rounded-xl p-3 mb-6 outline-none focus:border-blue-500 text-white text-center" placeholder="Passwort...">
+            <div class="flex gap-4">
+                <button onclick="closeModal()" class="flex-1 bg-slate-700 py-3 rounded-xl font-bold">Abbruch</button>
+                <button onclick="checkPassword()" class="flex-1 bg-blue-600 py-3 rounded-xl font-bold">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <aside id="sidebar" class="bg-[#1e293b] flex flex-col shadow-2xl no-print border-r border-slate-800">
+        <div class="p-6 flex items-center justify-between border-b border-slate-700">
+            <h2 class="text-white font-black text-2xl italic uppercase tracking-tighter">Rüstplan LIVE</h2>
+            <button onclick="toggleSidebar()" class="text-slate-500 hover:text-white text-2xl">«</button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto">
+            <div class="border-b border-slate-800 acc-active" id="accKW">
+                <button onclick="toggleAccordion('accKW')" class="w-full p-4 flex justify-between items-center hover:bg-slate-700/30">
+                    <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Zeitraum</span>
+                    <span class="text-[10px]">▼</span>
+                </button>
+                <div class="acc-content p-4">
+                    <div class="bg-slate-900 p-4 rounded-2xl border border-slate-700 text-center">
+                        <div class="flex items-center justify-between text-white mb-4">
+                            <button onclick="changeWeek(-1)" class="text-xl font-bold p-2">◀</button>
+                            <div>
+                                <span id="weekDisplay" class="text-3xl font-black italic">KW --</span>
+                                <div id="yearDisplay" class="text-[10px] text-slate-500 font-bold uppercase mt-1">2026</div>
+                            </div>
+                            <button onclick="changeWeek(1)" class="text-xl font-bold p-2">▶</button>
+                        </div>
+                        <button onclick="goToCurrentWeek()" class="w-full text-[10px] bg-blue-600/20 text-blue-400 py-2 rounded-xl font-black uppercase border border-blue-500/30 hover:bg-blue-600 hover:text-white transition">KW Heute</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-4">
+                <button onclick="openAnalysis()" class="w-full bg-white text-slate-900 py-4 rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl hover:scale-[1.02] active:scale-95 transition-all">📊 Analyse öffnen</button>
+            </div>
+
+            <div class="border-b border-slate-800" id="accPers">
+                <button onclick="toggleAccordion('accPers')" class="w-full p-4 flex justify-between items-center hover:bg-slate-700/30">
+                    <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Personal</span>
+                    <span class="text-[10px]">▼</span>
+                </button>
+                <div class="acc-content p-4">
+                    <div class="flex gap-2 mb-4">
+                        <input type="text" id="staffInput" class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white outline-none">
+                        <button onclick="addStaffMember()" class="bg-blue-600 text-white px-3 rounded-xl font-bold">+</button>
+                    </div>
+                    <div id="staffList" class="flex flex-wrap gap-2"></div>
+                </div>
+            </div>
+
+            <div class="border-b border-slate-800 acc-active" id="accMach">
+                <button onclick="toggleAccordion('accMach')" class="w-full p-4 flex justify-between items-center hover:bg-slate-700/30">
+                    <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Maschinen-Pool</span>
+                    <span class="text-[10px]">▼</span>
+                </button>
+                <div class="acc-content p-4">
+                    <div class="flex gap-2 mb-4">
+                        <input type="text" id="machineInput" class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white outline-none">
+                        <button onclick="addMachineToPool()" class="bg-blue-600 text-white px-3 rounded-xl font-bold">+</button>
+                    </div>
+                    <div id="pool" class="space-y-2"></div>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <button id="sidebarToggle" onclick="toggleSidebar()" class="fixed left-0 top-10 bg-slate-800 text-white p-4 rounded-r-3xl shadow-2xl z-10 hidden hover:bg-blue-600 no-print">▶</button>
+    
+    <main class="p-6 grid grid-cols-5 gap-4 overflow-hidden bg-[#0f172a]"></main>
+
+    <div id="analysisModal">
+        <div class="bg-slate-900 rounded-[2rem] shadow-2xl w-full max-w-4xl p-10 relative border border-slate-700">
+            <button onclick="closeAnalysis()" class="absolute top-8 right-8 text-slate-500 hover:text-white text-3xl">&times;</button>
+            <div id="printArea">
+                <h2 class="text-4xl font-black uppercase italic border-b-4 border-blue-500 pb-4 mb-6">KI-Wochenbericht</h2>
+                <div id="aiSummaryBox" class="mb-8 p-6 bg-blue-900/30 rounded-2xl italic text-blue-100"></div>
+                <div class="grid grid-cols-2 gap-8">
+                    <div id="statusStats" class="space-y-4"></div>
+                    <div id="staffStats" class="space-y-4"></div>
+                </div>
+            </div>
+            <div class="mt-10 flex gap-4">
+                <button onclick="window.print()" class="flex-1 bg-white text-black py-4 rounded-2xl font-black">DRUCKEN</button>
+                <button onclick="closeAnalysis()" class="flex-1 bg-slate-800 text-white py-4 rounded-2xl font-black">SCHLIESSEN</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        
+        const firebaseConfig = {
+  apiKey: "AIzaSyAmT1v__I-e0dfRLIcdG9SN4uNt4lEKezA",
+  authDomain: "test-dee17.firebaseapp.com",
+  databaseURL: "https://test-dee17-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "test-dee17",
+  storageBucket: "test-dee17.firebasestorage.app",
+  messagingSenderId: "1010731540568",
+  appId: "1:1010731540568:web:1a32e27dd3aba0130fea2d"
+};
+        // Firebase Starten
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        const days = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag"];
+        let staff = [], machines = [], plan = {}, lockedDays = {}, currentYear, currentWeek, dayToUnlock = "";
+
+        // Initialisierung
+        function initApp() {
+            const now = new Date();
+            currentYear = now.getFullYear();
+            currentWeek = getWeek(now);
+            
+            // LIVE-SYNC: Jede Änderung in Firebase führt diese Funktion aus
+            db.ref('rustplan_root').on('value', (snapshot) => {
+                const data = snapshot.val() || {};
+                staff = data.staff || ["Lange", "Saric", "Ederle", "Oks"];
+                machines = data.machines || ["Integrex", "Ergo 260CL"];
+                
+                const weekKey = `plan-${currentYear}-W${currentWeek}`;
+                const lockKey = `lock-${currentYear}-W${currentWeek}`;
+                plan = data[weekKey] || {};
+                lockedDays = data[lockKey] || {};
+
+                document.getElementById('weekDisplay').innerText = `KW ${currentWeek.toString().padStart(2, '0')}`;
+                render();
+            });
+        }
+
+        // --- SPEICHERN IN FIREBASE ---
+        function save() {
+            const updates = {};
+            updates['/staff'] = staff;
+            updates['/machines'] = machines;
+            updates[`/plan-${currentYear}-W${currentWeek}`] = plan;
+            updates[`/lock-${currentYear}-W${currentWeek}`] = lockedDays;
+            
+            db.ref('rustplan_root').update(updates);
+        }
+
+        function getWeek(d) {
+            d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+            d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay()||7));
+            return Math.ceil((((d - new Date(Date.UTC(d.getUTCFullYear(),0,1))) / 86400000) + 1)/7);
+        }
+
+        function render() {
+            const main = document.querySelector('main'); main.innerHTML = '';
+            const colors = ["border-indigo-500", "border-emerald-500", "border-amber-500", "border-rose-500", "border-cyan-500"];
+            
+            days.forEach(day => {
+                const isLocked = lockedDays[day];
+                const col = document.createElement('div');
+                col.className = `flex flex-col gap-3 h-full min-h-0 ${isLocked ? 'locked-day' : ''}`;
+                col.innerHTML = `
+                    <div class="bg-slate-800/70 text-slate-400 font-black p-2 flex items-center justify-between rounded-xl uppercase text-[10px] tracking-widest border border-slate-700/50">
+                        <span>${day}</span>
+                        <button onclick="handleLock('${day}')" class="lock-btn hover:text-white">${isLocked ? '🔒' : '🔓'}</button>
+                    </div>`;
+                
+                staff.forEach((person, idx) => {
+                    const key = `${day}-${person}`;
+                    const slot = document.createElement('div');
+                    slot.className = `flex-1 bg-slate-900/40 border-l-4 ${colors[idx % colors.length]} rounded-xl p-2 flex flex-col min-h-0 drop-zone-area overflow-hidden relative border border-slate-800/50`;
+                    if (!isLocked) { slot.setAttribute('ondrop', 'drop(event)'); slot.setAttribute('ondragover', 'event.preventDefault()'); }
+                    slot.setAttribute('data-key', key);
+                    slot.innerHTML = `<div class="staff-header">${person}</div><div id="${key}" class="no-scroll-container"></div>`;
+                    col.appendChild(slot);
+                });
+                main.appendChild(col);
+            });
+            draw(); renderStaff(); renderPool();
+        }
+
+        function draw() {
+            document.querySelectorAll('[data-key]').forEach(el => {
+                const key = el.getAttribute('data-key');
+                const container = document.getElementById(key); if (!container) return;
+                container.innerHTML = '';
+                (plan[key] || []).forEach((m, idx) => {
+                    const b = document.createElement('div');
+                    b.className = `machine-badge status-${m.status} shadow-xl cursor-pointer hover:brightness-125 transition-all`;
+                    b.innerHTML = `<span class="truncate pr-1 flex-1 py-1" onclick="toggleStatus('${key}', ${idx})">${m.name}</span>
+                        ${!lockedDays[key.split('-')[0]] ? `<span onclick="removeFromPlan('${key}', ${idx})" class="w-4 h-4 flex items-center justify-center text-lg font-light">×</span>` : ''}`;
+                    container.appendChild(b);
+                });
+            });
+        }
+
+        function handleLock(day) {
+            if (lockedDays[day]) { dayToUnlock = day; document.getElementById('pwModal').style.display = 'flex'; document.getElementById('pwInput').focus(); }
+            else { if (confirm(`${day} fixieren?`)) { lockedDays[day] = true; save(); } }
+        }
+
+        function checkPassword() { 
+            if (document.getElementById('pwInput').value === "Gelenkwelle") { 
+                lockedDays[dayToUnlock] = false; save(); closeModal(); 
+            } else { alert("Falsch!"); } 
+        }
+
+        function closeModal() { document.getElementById('pwModal').style.display = 'none'; document.getElementById('pwInput').value = ''; }
+        
+        function toggleStatus(key, index) { 
+            const s = ['eingeplant', 'stoerung', 'erledigt']; 
+            plan[key][index].status = s[(s.indexOf(plan[key][index].status)+1)%3]; 
+            save(); 
+        }
+
+        function removeFromPlan(key, index) { plan[key].splice(index, 1); save(); }
+
+        function drop(ev) {
+            ev.preventDefault(); 
+            let dz = ev.target.closest('[data-key]'); if (!dz) return;
+            let mName = ev.dataTransfer.getData("text"); 
+            let key = dz.getAttribute("data-key");
+            if (!plan[key]) plan[key] = []; 
+            plan[key].push({ name: mName, status: 'eingeplant' }); 
+            save();
+        }
+
+        function changeWeek(dir) { 
+            currentWeek += dir; 
+            if (currentWeek > 52) { currentWeek = 1; currentYear++; } 
+            if (currentWeek < 1) { currentWeek = 52; currentYear--; } 
+            save(); // Wir speichern den Stand der aktuellen Woche bevor wir wechseln
+        }
+
+        function goToCurrentWeek() { 
+            const n = new Date(); 
+            currentYear = n.getFullYear(); 
+            currentWeek = getWeek(n); 
+            render(); 
+        }
+
+        function addStaffMember() { 
+            const v = document.getElementById('staffInput').value.trim(); 
+            if (v && !staff.includes(v)) { staff.push(v); save(); document.getElementById('staffInput').value = ''; } 
+        }
+
+        function removeStaffMember(n) { if(confirm(`${n} löschen?`)) { staff = staff.filter(s => s !== n); save(); } }
+
+        function addMachineToPool() { 
+            const v = document.getElementById('machineInput').value.trim(); 
+            if (v && !machines.includes(v)) { machines.push(v); save(); document.getElementById('machineInput').value = ''; } 
+        }
+
+        function removeMachineFromPool(n) { if(confirm(`${n} löschen?`)) { machines = machines.filter(m => m !== n); save(); } }
+
+        function renderStaff() { 
+            document.getElementById('staffList').innerHTML = staff.map(n => `<div class="bg-slate-800 text-slate-300 px-2 py-1 rounded-lg text-[9px] flex items-center border border-slate-700 font-bold">${n}<button onclick="removeStaffMember('${n}')" class="text-red-500 ml-1">×</button></div>`).join(''); 
+        }
+
+        function renderPool() { 
+            document.getElementById('pool').innerHTML = machines.map(m => `<div draggable="true" ondragstart="event.dataTransfer.setData('text', event.target.dataset.name)" data-name="${m}" class="machine-item bg-slate-800 p-3 rounded-xl border border-slate-700 hover:border-blue-500 text-white text-[11px] font-bold flex justify-between items-center group shadow-md italic"><span>⚙️ ${m}</span><button onclick="removeMachineFromPool('${m}')" class="text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity ml-2">×</button></div>`).join(''); 
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const toggleBtn = document.getElementById('sidebarToggle');
+            sidebar.classList.toggle('sidebar-collapsed');
+            sidebar.classList.contains('sidebar-collapsed') ? setTimeout(() => toggleBtn.classList.remove('hidden'), 200) : toggleBtn.classList.add('hidden');
+        }
+
+        function toggleAccordion(id) { document.getElementById(id).classList.toggle('acc-active'); }
+        function closeAnalysis() { document.getElementById('analysisModal').style.display = 'none'; }
+
+        function openAnalysis() {
+            let s = { status: { erledigt: 0, stoerung: 0, eingeplant: 0 }, machines: {}, staff: {}, total: 0 };
+            Object.entries(plan).forEach(([key, items]) => {
+                const sName = key.split('-')[1];
+                items.forEach(m => {
+                    s.status[m.status]++;
+                    s.machines[m.name] = (s.machines[m.name] || 0) + 1;
+                    s.staff[sName] = (s.staff[sName] || 0) + 1;
+                    s.total++;
+                });
+            });
+            
+            document.getElementById('aiSummaryBox').innerHTML = s.total > 0 ? `Effizienz bei **${((s.status.erledigt/s.total)*100).toFixed(0)}%**. Top-Maschine: **${Object.entries(s.machines).sort((a,b)=>b[1]-a[1])[0][0]}**.` : "Keine Daten.";
+            document.getElementById('statusStats').innerHTML = `<div class="bg-emerald-900/40 p-4 rounded-xl border border-emerald-500/30 text-emerald-400 flex justify-between"><span>OK</span><b>${s.status.erledigt}</b></div><div class="bg-red-900/40 p-4 rounded-xl border border-red-500/30 text-red-400 flex justify-between"><span>STOP</span><b>${s.status.stoerung}</b></div>`;
+            document.getElementById('staffStats').innerHTML = staff.map(n => {
+                const c = s.staff[n] || 0; const p = s.total > 0 ? (c/s.total*100) : 0;
+                return `<div class="mb-4"><div class="flex justify-between text-[10px] text-slate-400 mb-1"><span>${n}</span><span>${c}</span></div><div class="bg-slate-800 h-1.5 rounded-full overflow-hidden"><div class="bg-blue-500 h-full" style="width:${p}%"></div></div></div>`;
+            }).join('');
+            document.getElementById('analysisModal').style.display = 'flex';
+        }
+
+        window.onload = initApp;
+    </script>
+</body>
+</html>

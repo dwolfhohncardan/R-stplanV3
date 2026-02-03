@@ -274,7 +274,7 @@
                 const isToday = (isAW && day === tName);
                 const col = document.createElement('div');
                 col.className = `flex flex-col gap-3 min-h-0`;
-                col.innerHTML = `<div class="font-black p-2 flex items-center justify-center rounded-xl uppercase text-[10px] border border-slate-700/50 ${isToday ? 'today-highlight' : 'bg-slate-800/70 text-slate-400'}"><span>${isToday ? '★ ' + day + ' ★' : day}</span></div>`;
+                col.innerHTML = `<div class="font-black p-2 flex items-center justify-center rounded-xl uppercase text-[10px] border border-slate-700/50 ${isToday ? 'today-highlight' : 'bg-slate-800/70 text-slate-400'}"><span>${day}</span></div>`;
                 staff.forEach((person, idx) => {
                     const key = `${day}-${person}`;
                     const slot = document.createElement('div');
@@ -321,4 +321,5 @@
     </script>
 </body>
 </html>
+
 

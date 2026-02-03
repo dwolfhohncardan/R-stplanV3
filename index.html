@@ -10,83 +10,25 @@
     <style>
         :root { --bg-main: #0f172a; --bg-sidebar: #1e293b; --accent: #3b82f6; }
         body { background-color: var(--bg-main); color: #f1f5f9; margin: 0; padding: 0; overflow: hidden; font-family: ui-sans-serif, system-ui, sans-serif; }
-        
         .app-container { display: flex; height: 100vh; width: 100vw; }
-        
-        aside { 
-            width: 320px; 
-            background-color: var(--bg-sidebar); 
-            border-right: 1px solid #334155; 
-            display: flex; 
-            flex-direction: column; 
-            flex-shrink: 0; 
-        }
+        aside { width: 320px; background-color: var(--bg-sidebar); border-right: 1px solid #334155; display: flex; flex-direction: column; flex-shrink: 0; }
+        main { flex-grow: 1; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 1rem; padding: 1.5rem; overflow-y: auto; }
 
-        main { 
-            flex-grow: 1; 
-            display: grid; 
-            grid-template-columns: repeat(5, minmax(0, 1fr)); 
-            gap: 1rem; 
-            padding: 1.5rem; 
-            overflow-y: auto; 
-        }
-
-        /* Status Farben */
         .status-eingeplant { background-color: #334155; border-left: 4px solid #64748b; }
         .status-stoerung { background-color: #7f1d1d; border-left: 4px solid #ef4444; color: #fee2e2; }
         .status-erledigt { background-color: #064e3b; border-left: 4px solid #10b981; color: #d1fae5; }
         
-        .locked-day { filter: grayscale(0.4) brightness(0.7); }
+        .locked-day { filter: grayscale(0.5) brightness(0.8); }
         .locked-day .drop-zone-area { pointer-events: none; }
+        .locked-day .machine-badge, .locked-day .note-area-inline { pointer-events: auto !important; }
 
-        /* FLEXIBLER RAHMEN: Passt sich dem Inhalt an */
-        .machine-badge { 
-            min-height: 40px; 
-            height: auto; /* Wichtig für die Anpassung */
-            margin-bottom: 8px; 
-            display: flex; 
-            flex-direction: column; /* Stapelt Name und Notiz */
-            padding: 8px; 
-            border-radius: 8px; 
-            font-weight: 700; 
-            font-size: 12px; 
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3); 
-            position: relative;
-        }
-
-        .badge-top-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            width: 100%;
-        }
-
+        .machine-badge { min-height: 40px; height: auto; margin-bottom: 8px; display: flex; flex-direction: column; padding: 8px; border-radius: 8px; font-weight: 700; font-size: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3); position: relative; }
+        .badge-top-row { display: flex; justify-content: space-between; align-items: flex-start; width: 100%; }
         .staff-header { font-size: 11px; font-weight: 900; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px; }
         
-        /* Maschinen Pool 2-Spalten Grid */
-        #pool { 
-            display: grid; 
-            grid-template-columns: 1fr 1fr; 
-            gap: 10px; 
-        }
+        #pool { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
-        /* Automatisches Textfeld */
-        .note-area-inline { 
-            background: rgba(0, 0, 0, 0.25); 
-            border: 1px solid rgba(255,255,255,0.1); 
-            border-radius: 6px; 
-            color: white; 
-            font-size: 11px; 
-            padding: 6px; 
-            margin-top: 8px;
-            width: 100%;
-            outline: none; 
-            font-weight: normal; 
-            resize: none; 
-            overflow: hidden; 
-            line-height: 1.4;
-        }
-
+        .note-area-inline { background: rgba(0, 0, 0, 0.25); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: white; font-size: 11px; padding: 6px; margin-top: 8px; width: 100%; outline: none; font-weight: normal; resize: none; overflow: hidden; line-height: 1.4; }
         #pwModal { display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.9); z-index: 100; align-items: center; justify-content: center; backdrop-filter: blur(8px); }
     </style>
 </head>
@@ -108,17 +50,15 @@
             <div class="p-6 border-b border-slate-700">
                 <h2 class="text-white font-black text-2xl italic uppercase tracking-tighter">Rüstplan LIVE</h2>
             </div>
-            
             <div class="flex-1 overflow-y-auto p-4 space-y-6">
                 <div class="bg-slate-900 p-4 rounded-2xl border border-slate-700 text-center">
                     <div class="flex items-center justify-between text-white mb-2">
-                        <button onclick="changeWeek(-1)" class="p-1 hover:text-blue-400">◀</button>
+                        <button onclick="changeWeek(-1)" class="p-2 hover:text-blue-400 font-bold text-xl">◀</button>
                         <span id="weekDisplay" class="text-xl font-black italic">KW --</span>
-                        <button onclick="changeWeek(1)" class="p-1 hover:text-blue-400">▶</button>
+                        <button onclick="changeWeek(1)" class="p-2 hover:text-blue-400 font-bold text-xl">▶</button>
                     </div>
-                    <button onclick="goToCurrentWeek()" class="w-full text-[9px] bg-blue-600/20 text-blue-400 py-1 rounded-lg font-black uppercase border border-blue-500/30">Heute</button>
+                    <button onclick="goToCurrentWeek()" class="w-full text-[9px] bg-blue-600/20 text-blue-400 py-1 rounded-lg font-black uppercase border border-blue-500/30 hover:bg-blue-600 hover:text-white transition">KW Heute</button>
                 </div>
-
                 <div>
                     <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Team</span>
                     <div class="flex gap-2 mb-3">
@@ -127,7 +67,6 @@
                     </div>
                     <div id="staffList" class="flex flex-wrap gap-2"></div>
                 </div>
-
                 <div>
                     <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Maschinen-Pool</span>
                     <div class="flex gap-2 mb-3">
@@ -138,7 +77,6 @@
                 </div>
             </div>
         </aside>
-
         <main id="mainGrid"></main>
     </div>
 
@@ -155,20 +93,30 @@
 
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
-
         const days = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag"];
         let staff = [], machines = [], plan = {}, lockedDays = {}, currentYear, currentWeek, dayToUnlock = "";
 
         function initApp() {
             const now = new Date();
-            currentYear = now.getFullYear();
+            currentYear = now.getFullYear(); 
             currentWeek = getWeek(now);
+            listenToDatabase();
+        }
+
+        // Neue Funktion, die gezielt auf die aktuell gewählte Woche hört
+        function listenToDatabase() {
+            // Alte Listener entfernen, um Chaos zu vermeiden
+            db.ref('rustplan_root').off();
+            
             db.ref('rustplan_root').on('value', (snapshot) => {
                 const data = snapshot.val() || {};
                 staff = data.staff || ["Lange", "Saric", "Ederle", "Oks"];
                 machines = data.machines || [];
+                
+                // Woche-spezifische Daten laden
                 plan = data[`plan-${currentYear}-W${currentWeek}`] || {};
                 lockedDays = data[`lock-${currentYear}-W${currentWeek}`] || {};
+                
                 document.getElementById('weekDisplay').innerText = `KW ${currentWeek.toString().padStart(2, '0')}`;
                 render();
             });
@@ -176,11 +124,25 @@
 
         function save() {
             const updates = {};
-            updates['/staff'] = staff;
+            updates['/staff'] = staff; 
             updates['/machines'] = machines;
             updates[`/plan-${currentYear}-W${currentWeek}`] = plan;
             updates[`/lock-${currentYear}-W${currentWeek}`] = lockedDays;
             db.ref('rustplan_root').update(updates);
+        }
+
+        function changeWeek(dir) { 
+            currentWeek += dir; 
+            if (currentWeek > 52) { currentWeek = 1; currentYear++; } 
+            if (currentWeek < 1) { currentWeek = 52; currentYear--; } 
+            listenToDatabase(); // Datenbank-Verbindung für die neue Woche aktualisieren
+        }
+
+        function goToCurrentWeek() { 
+            const n = new Date(); 
+            currentYear = n.getFullYear(); 
+            currentWeek = getWeek(n); 
+            listenToDatabase(); 
         }
 
         function getWeek(d) {
@@ -192,23 +154,16 @@
         function render() {
             const main = document.getElementById('mainGrid'); main.innerHTML = '';
             const colors = ["border-indigo-500", "border-emerald-500", "border-amber-500", "border-rose-500", "border-cyan-500"];
-            
             days.forEach(day => {
                 const isLocked = lockedDays[day];
                 const col = document.createElement('div');
                 col.className = `flex flex-col gap-3 min-h-0 ${isLocked ? 'locked-day' : ''}`;
-                col.innerHTML = `
-                    <div class="bg-slate-800/70 text-slate-400 font-black p-2 flex items-center justify-between rounded-xl uppercase text-[10px] border border-slate-700/50">
-                        <span>${day}</span>
-                        <button onclick="handleLock('${day}')" class="hover:text-white">${isLocked ? '🔒' : '🔓'}</button>
-                    </div>`;
-                
+                col.innerHTML = `<div class="bg-slate-800/70 text-slate-400 font-black p-2 flex items-center justify-between rounded-xl uppercase text-[10px] border border-slate-700/50"><span>${day}</span><button onclick="handleLock('${day}')" class="hover:text-white">${isLocked ? '🔒' : '🔓'}</button></div>`;
                 staff.forEach((person, idx) => {
                     const key = `${day}-${person}`;
                     const slot = document.createElement('div');
                     slot.className = `bg-slate-900/40 border-l-4 ${colors[idx % colors.length]} rounded-xl p-3 flex flex-col drop-zone-area border border-slate-800/50 mb-2`;
-                    slot.setAttribute('ondrop', 'drop(event)'); 
-                    slot.setAttribute('ondragover', 'event.preventDefault()');
+                    slot.setAttribute('ondrop', 'drop(event)'); slot.setAttribute('ondragover', 'event.preventDefault()');
                     slot.setAttribute('data-key', key);
                     slot.innerHTML = `<div class="staff-header">${person}</div><div id="${key}"></div>`;
                     col.appendChild(slot);
@@ -225,40 +180,29 @@
                 container.innerHTML = '';
                 const day = key.split('-')[0];
                 const isLocked = lockedDays[day];
-
                 (plan[key] || []).forEach((m, idx) => {
                     const b = document.createElement('div');
                     b.className = `machine-badge status-${m.status}`;
-                    
                     const topRow = document.createElement('div');
                     topRow.className = "badge-top-row";
-                    
                     const nameSpan = document.createElement('span');
                     nameSpan.className = "cursor-pointer flex-grow pr-2";
                     nameSpan.onclick = () => toggleStatus(key, idx);
                     nameSpan.innerText = m.name;
                     topRow.appendChild(nameSpan);
-
                     const icons = document.createElement('div');
                     icons.className = "flex items-center gap-2";
-                    icons.innerHTML = `
-                        <span onclick="toggleNoteInput('${key}', ${idx})" class="cursor-pointer text-[14px] opacity-60 hover:opacity-100">💬</span>
-                        ${!isLocked ? `<span onclick="removeFromPlan('${key}', ${idx})" class="text-[16px] font-light cursor-pointer opacity-40 hover:opacity-100">×</span>` : ''}
-                    `;
+                    icons.innerHTML = `<span onclick="toggleNoteInput('${key}', ${idx})" class="cursor-pointer text-[14px] opacity-60 hover:opacity-100">💬</span>${!isLocked ? `<span onclick="removeFromPlan('${key}', ${idx})" class="text-[16px] font-light cursor-pointer opacity-40 hover:opacity-100">×</span>` : ''}`;
                     topRow.appendChild(icons);
                     b.appendChild(topRow);
-
                     if(m.note !== undefined) {
                         const area = document.createElement('textarea');
-                        area.className = "note-area-inline";
-                        area.rows = 1; area.value = m.note || "";
-                        area.placeholder = "Notiz...";
+                        area.className = "note-area-inline"; area.rows = 1; area.value = m.note || "";
                         area.oninput = (e) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; };
                         area.onchange = (e) => { plan[key][idx].note = e.target.value; save(); };
                         b.appendChild(area);
                         setTimeout(() => { area.style.height = 'auto'; area.style.height = area.scrollHeight + 'px'; }, 0);
                     }
-
                     container.appendChild(b);
                 });
             });
@@ -272,31 +216,13 @@
         function removeFromPlan(k, i) { plan[k].splice(i, 1); save(); }
         function drop(ev) { ev.preventDefault(); let dz = ev.target.closest('[data-key]'); if (!dz || lockedDays[dz.getAttribute("data-key").split('-')[0]]) return; let key = dz.getAttribute("data-key"); if (!plan[key]) plan[key] = []; plan[key].push({ name: ev.dataTransfer.getData("text"), status: 'eingeplant' }); save(); }
         
-        function changeWeek(dir) { currentWeek += dir; if (currentWeek > 52) { currentWeek = 1; currentYear++; } if (currentWeek < 1) { currentWeek = 52; currentYear--; } render(); }
-        function goToCurrentWeek() { const n = new Date(); currentYear = n.getFullYear(); currentWeek = getWeek(n); render(); }
-        
         function addStaffMember() { const v = document.getElementById('staffInput').value.trim(); if (v && !staff.includes(v)) { staff.push(v); save(); document.getElementById('staffInput').value = ''; } }
         function removeStaffMember(n) { if(confirm(`${n} entfernen?`)) { staff = staff.filter(s => s !== n); save(); } }
-        
         function addMachineToPool() { const v = document.getElementById('machineInput').value.trim(); if (v && !machines.includes(v)) { machines.push(v); save(); document.getElementById('machineInput').value = ''; } }
         function removeMachineFromPool(n) { if(confirm(`${n} entfernen?`)) { machines = machines.filter(m => m !== n); save(); } }
-
-        function renderStaff() { 
-            document.getElementById('staffList').innerHTML = staff.map(n => `
-                <div class="bg-slate-800 text-slate-300 px-2 py-1 rounded-lg text-[10px] border border-slate-700 font-bold flex items-center">
-                    ${n}<button onclick="removeStaffMember('${n}')" class="ml-2 text-red-500">×</button>
-                </div>`).join(''); 
-        }
-
-        function renderPool() { 
-            document.getElementById('pool').innerHTML = machines.map(m => `
-                <div draggable="true" ondragstart="event.dataTransfer.setData('text', event.target.dataset.name)" data-name="${m}" 
-                     class="bg-slate-800 p-2 rounded-xl border border-slate-700 text-white text-[10px] font-bold italic shadow-md cursor-move hover:border-blue-500 flex justify-between items-center group">
-                    <span>⚙️ ${m}</span>
-                    <button onclick="removeMachineFromPool('${m}')" class="opacity-0 group-hover:opacity-100 text-red-500">×</button>
-                </div>`).join(''); 
-        }
-
+        function renderStaff() { document.getElementById('staffList').innerHTML = staff.map(n => `<div class="bg-slate-800 text-slate-300 px-2 py-1 rounded-lg text-[10px] border border-slate-700 font-bold flex items-center">${n}<button onclick="removeStaffMember('${n}')" class="ml-2 text-red-500">×</button></div>`).join(''); }
+        function renderPool() { document.getElementById('pool').innerHTML = machines.map(m => `<div draggable="true" ondragstart="event.dataTransfer.setData('text', event.target.dataset.name)" data-name="${m}" class="bg-slate-800 p-2 rounded-xl border border-slate-700 text-white text-[10px] font-bold italic shadow-md cursor-move hover:border-blue-500 flex justify-between items-center group"><span>⚙️ ${m}</span><button onclick="removeMachineFromPool('${m}')" class="opacity-0 group-hover:opacity-100 text-red-500">×</button></div>`).join(''); }
+        
         window.onload = initApp;
     </script>
 </body>

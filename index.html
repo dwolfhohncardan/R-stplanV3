@@ -15,30 +15,195 @@
         :root { --bg-main: #0f172a; --bg-sidebar: #1e293b; --accent: #3b82f6; }
         body { background-color: var(--bg-main); color: #f1f5f9; margin: 0; padding: 0; overflow: hidden; font-family: ui-sans-serif, system-ui, sans-serif; height: 100vh; width: 100vw; }
         .app-container { display: flex; height: 100vh; width: 100vw; overflow: hidden; }
-        aside { width: 320px; background-color: var(--bg-sidebar); border-right: 1px solid #334155; display: flex; flex-direction: column; flex-shrink: 0; transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); position: relative; }
+        
+        /* SIDEBAR */
+        aside { 
+            width: 320px; 
+            background-color: var(--bg-sidebar); 
+            border-right: 1px solid #334155; 
+            display: flex; 
+            flex-direction: column; 
+            flex-shrink: 0; 
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+            position: relative; 
+            z-index: 50;
+        }
         aside.collapsed { width: 50px; }
         aside.collapsed .sidebar-content { display: none; }
         .toggle-btn { position: absolute; right: 10px; top: 15px; cursor: pointer; background: #334155; color: white; padding: 2px 8px; border-radius: 4px; font-weight: bold; z-index: 10; }
-        main { flex-grow: 1; display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.5rem; padding: 1rem; overflow-y: auto; overflow-x: hidden; width: 100%; }
+        
+        /* MOBILE SIDEBAR */
+        @media (max-width: 768px) {
+            aside {
+                position: fixed;
+                left: 0;
+                top: 0;
+                height: 100vh;
+                width: 280px;
+                transform: translateX(-100%);
+            }
+            aside.mobile-open {
+                transform: translateX(0);
+            }
+            aside.collapsed {
+                width: 280px;
+                transform: translateX(-100%);
+            }
+            aside.collapsed.mobile-open {
+                transform: translateX(0);
+            }
+            aside.collapsed .sidebar-content { display: flex; flex-direction: column; flex: 1; }
+            .toggle-btn { display: none; }
+            .mobile-overlay {
+                display: none;
+                position: fixed;
+                inset: 0;
+                background: rgba(0,0,0,0.5);
+                z-index: 40;
+            }
+            .mobile-overlay.active {
+                display: block;
+            }
+        }
+        
+        /* MOBILE MENU BUTTON */
+        .mobile-menu-btn {
+            display: none;
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            z-index: 30;
+            background: #334155;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            border: none;
+        }
+        @media (max-width: 768px) {
+            .mobile-menu-btn { display: block; }
+        }
+        
+        /* MAIN GRID */
+        main { 
+            flex-grow: 1; 
+            display: grid; 
+            grid-template-columns: repeat(5, 1fr); 
+            gap: 0.5rem; 
+            padding: 1rem; 
+            overflow-y: auto; 
+            overflow-x: auto; 
+            width: 100%; 
+        }
+        
+        @media (max-width: 1200px) {
+            main { grid-template-columns: repeat(3, 1fr); }
+        }
+        
+        @media (max-width: 768px) {
+            main { 
+                grid-template-columns: repeat(2, 1fr); 
+                padding: 60px 0.5rem 0.5rem 0.5rem;
+                gap: 0.4rem;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            main { 
+                grid-template-columns: 1fr; 
+                padding: 60px 0.5rem 0.5rem 0.5rem;
+            }
+        }
 
         /* STATUS FARBEN */
-        .status-eingeplant { background-color: #334155; border-left: 4px solid #64748b; } /* GRAU */
-        .status-umbau { background-color: #1e3a8a; border-left: 4px solid #3b82f6; color: #dbeafe; } /* BLAU */
-        .status-erledigt { background-color: #064e3b; border-left: 4px solid #10b981; color: #d1fae5; } /* GRÜN */
-        .status-stoerung { background-color: #7f1d1d; border-left: 4px solid #ef4444; color: #fee2e2; } /* ROT */
+        .status-eingeplant { background-color: #334155; border-left: 4px solid #64748b; }
+        .status-umbau { background-color: #1e3a8a; border-left: 4px solid #3b82f6; color: #dbeafe; }
+        .status-erledigt { background-color: #064e3b; border-left: 4px solid #10b981; color: #d1fae5; }
+        .status-stoerung { background-color: #7f1d1d; border-left: 4px solid #ef4444; color: #fee2e2; }
 
-        .machine-badge { min-height: 38px; margin-bottom: 6px; display: flex; flex-direction: row; align-items: center; gap: 4px; padding: 4px 6px; border-radius: 6px; font-weight: 700; font-size: 11px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3); width: 100%; }
+        .machine-badge { 
+            min-height: 38px; 
+            margin-bottom: 6px; 
+            display: flex; 
+            flex-direction: row; 
+            align-items: center; 
+            gap: 4px; 
+            padding: 4px 6px; 
+            border-radius: 6px; 
+            font-weight: 700; 
+            font-size: 11px; 
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3); 
+            width: 100%; 
+            flex-wrap: wrap;
+        }
+        
+        @media (max-width: 480px) {
+            .machine-badge { 
+                font-size: 10px; 
+                padding: 3px 5px;
+                min-height: 34px;
+            }
+        }
+        
         .staff-header { font-size: 11px; font-weight: 900; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+        
+        @media (max-width: 480px) {
+            .staff-header { font-size: 10px; }
+        }
+        
         #pool { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-        .note-area-inline { background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; color: white; font-size: 9px; padding: 2px 4px; height: 22px; flex-grow: 1; outline: none; resize: none; overflow: hidden; white-space: nowrap; }
+        .note-area-inline { background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; color: white; font-size: 9px; padding: 2px 4px; height: 22px; flex-grow: 1; outline: none; resize: none; overflow: hidden; white-space: nowrap; min-width: 50px; }
         .admin-input { background: #0f172a; border: 1px solid #334155; border-radius: 6px; padding: 4px 8px; font-size: 11px; color: white; width: 100%; outline: none; }
         .delete-btn { opacity: 0; transition: opacity 0.2s; color: #ef4444; font-size: 14px; cursor: pointer; }
         .admin-item:hover .delete-btn { opacity: 1; }
-        #pwModal, #statsModal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 100; align-items: center; justify-content: center; backdrop-filter: blur(8px); }
+        
+        /* Touch-friendly delete button */
+        @media (max-width: 768px) {
+            .delete-btn { opacity: 0.7; }
+        }
+        
+        /* MODALS */
+        #pwModal, #statsModal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 100; align-items: center; justify-content: center; backdrop-filter: blur(8px); padding: 1rem; }
+        
+        #pwModal > div, #statsModal > div {
+            max-width: 95vw;
+            max-height: 95vh;
+            overflow-y: auto;
+        }
+        
+        @media (max-width: 768px) {
+            #statsModal > div {
+                width: 100% !important;
+                padding: 1rem;
+                border-radius: 1rem;
+            }
+            #statsResult {
+                grid-template-columns: 1fr !important;
+            }
+        }
+        
         .today-highlight { background-color: #3b82f6 !important; color: white !important; border: 2px solid #60a5fa !important; box-shadow: 0 0 10px rgba(59, 130, 246, 0.4); }
+        
+        /* Day column responsive */
+        .day-column {
+            min-width: 0;
+        }
+        
+        @media (max-width: 768px) {
+            .day-column {
+                min-width: 140px;
+            }
+        }
     </style>
 </head>
 <body>
+    <!-- Mobile Menu Button -->
+    <button class="mobile-menu-btn" onclick="toggleMobileSidebar()">☰ Menü</button>
+    
+    <!-- Mobile Overlay -->
+    <div class="mobile-overlay" id="mobileOverlay" onclick="closeMobileSidebar()"></div>
+
     <div id="pwModal">
         <div class="bg-slate-800 p-8 rounded-3xl shadow-2xl w-96 border border-slate-600 text-center">
             <h3 class="text-xl font-black mb-6 uppercase italic">Berechtigung prüfen</h3>
@@ -53,8 +218,8 @@
     <div id="statsModal">
         <div class="bg-slate-800 p-8 rounded-3xl shadow-2xl w-[700px] max-h-[90vh] overflow-y-auto border border-slate-600 relative">
             <button onclick="closeStats()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-2xl">×</button>
-            <h3 class="text-2xl font-black mb-2 uppercase italic text-blue-400">🤖 KI Performance-Analyse</h3>
-            <div class="bg-slate-900/50 p-4 rounded-2xl mb-6 flex gap-4 items-end border border-slate-700">
+            <h3 class="text-xl md:text-2xl font-black mb-2 uppercase italic text-blue-400">🤖 KI Performance-Analyse</h3>
+            <div class="bg-slate-900/50 p-4 rounded-2xl mb-6 flex flex-col md:flex-row gap-4 items-stretch md:items-end border border-slate-700">
                 <div class="flex-1">
                     <label class="text-[9px] uppercase font-bold text-slate-500">Start KW</label>
                     <input type="number" id="statsFrom" class="admin-input block w-full">
@@ -63,7 +228,7 @@
                     <label class="text-[9px] uppercase font-bold text-slate-500">Ende KW</label>
                     <input type="number" id="statsTo" class="admin-input block w-full">
                 </div>
-                <button onclick="runDeepAnalysis()" class="bg-blue-600 px-6 py-2 rounded-lg font-bold text-xs uppercase hover:bg-blue-500">Analyse starten</button>
+                <button onclick="runDeepAnalysis()" class="bg-blue-600 px-6 py-2 rounded-lg font-bold text-xs uppercase hover:bg-blue-500 whitespace-nowrap">Analyse starten</button>
             </div>
             <div id="statsResult" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
             <button onclick="exportDeepPDF()" class="w-full mt-8 bg-emerald-600 py-4 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-emerald-500 transition-colors">Export als .PDF Report</button>
@@ -74,8 +239,9 @@
         <aside id="sidebar">
             <div class="toggle-btn" onclick="toggleSidebar()" id="sidebarBtn">«</div>
             <div class="sidebar-content">
-                <div class="p-6 border-b border-slate-700 text-center">
-                    <h2 class="text-white font-black text-xl italic uppercase tracking-tighter">Rüstplan LIVE</h2>
+                <div class="p-4 md:p-6 border-b border-slate-700 text-center flex items-center justify-between">
+                    <h2 class="text-white font-black text-lg md:text-xl italic uppercase tracking-tighter">Rüstplan LIVE</h2>
+                    <button class="md:hidden text-slate-400 text-2xl" onclick="closeMobileSidebar()">×</button>
                 </div>
                 <div class="flex-1 overflow-y-auto p-4 space-y-4">
                     <details class="group">
@@ -161,6 +327,20 @@
             sb.classList.toggle('collapsed');
             btn.innerText = sb.classList.contains('collapsed') ? '»' : '«';
         }
+        
+        function toggleMobileSidebar() {
+            const sb = document.getElementById('sidebar');
+            const overlay = document.getElementById('mobileOverlay');
+            sb.classList.toggle('mobile-open');
+            overlay.classList.toggle('active');
+        }
+        
+        function closeMobileSidebar() {
+            const sb = document.getElementById('sidebar');
+            const overlay = document.getElementById('mobileOverlay');
+            sb.classList.remove('mobile-open');
+            overlay.classList.remove('active');
+        }
 
         function initApp() {
             const now = new Date();
@@ -171,7 +351,11 @@
             listenToDatabase();
         }
 
-        function openStats() { document.getElementById('statsModal').style.display = 'flex'; runDeepAnalysis(); }
+        function openStats() { 
+            closeMobileSidebar();
+            document.getElementById('statsModal').style.display = 'flex'; 
+            runDeepAnalysis(); 
+        }
         function closeStats() { document.getElementById('statsModal').style.display = 'none'; }
 
         async function runDeepAnalysis() {
@@ -224,22 +408,22 @@
             document.getElementById('statsResult').innerHTML = `
                 <div class="bg-slate-900 p-5 rounded-3xl border border-blue-500/20">
                     <span class="text-[10px] uppercase font-black text-slate-500">🏆 meisten Rüstaufträge</span>
-                    <div class="text-2xl font-black text-white mt-1">${bestStaff[0]}</div>
+                    <div class="text-xl md:text-2xl font-black text-white mt-1">${bestStaff[0]}</div>
                     <div class="text-xs text-blue-400 font-bold uppercase">${bestStaff[1]} erledigt</div>
                 </div>
                 <div class="bg-slate-900 p-5 rounded-3xl border border-rose-500/20">
                     <span class="text-[10px] uppercase font-black text-slate-500">🚨 Störungstrend</span>
-                    <div class="text-2xl font-black text-white mt-1">${s.trend}</div>
+                    <div class="text-xl md:text-2xl font-black text-white mt-1">${s.trend}</div>
                     <div class="text-xs text-rose-400 font-bold uppercase">${s.totalStoerung} Störungen</div>
                 </div>
                 <div class="bg-slate-900 p-5 rounded-3xl border border-amber-500/20">
                     <span class="text-[10px] uppercase font-black text-slate-500">🛠️ Häufigster Umbau</span>
-                    <div class="text-2xl font-black text-white mt-1">${mostRuestMachine[0]}</div>
+                    <div class="text-xl md:text-2xl font-black text-white mt-1">${mostRuestMachine[0]}</div>
                     <div class="text-xs text-amber-400 font-bold uppercase">${mostRuestMachine[1]} Mal</div>
                 </div>
                 <div class="bg-slate-900 p-5 rounded-3xl border border-rose-600/20">
                     <span class="text-[10px] uppercase font-black text-slate-500">⚠️ Problem-Maschine</span>
-                    <div class="text-2xl font-black text-rose-500 mt-1">${mostStoerungMachine[0]}</div>
+                    <div class="text-xl md:text-2xl font-black text-rose-500 mt-1">${mostStoerungMachine[0]}</div>
                     <div class="text-xs text-rose-300 font-bold uppercase">${mostStoerungMachine[1]} Störungen</div>
                 </div>`;
         }
@@ -309,7 +493,7 @@
 
             days.forEach(day => {
                 const col = document.createElement('div');
-                col.className = `flex flex-col gap-2 min-w-0`;
+                col.className = `day-column flex flex-col gap-2 min-w-0`;
                 col.innerHTML = `<div class="font-black p-2 flex items-center justify-center rounded-lg uppercase text-[9px] border border-slate-700/50 ${(isAW && day === tName) ? 'today-highlight' : 'bg-slate-800/70 text-slate-400'}"><span>${day}</span></div>`;
                 staff.forEach((person, idx) => {
                     const key = `${day}-${person}`;
@@ -357,7 +541,6 @@
         }
 
         function toggleStatus(k, i) {
-            // Angepasste Reihenfolge: eingeplant (grau) -> umbau (blau) -> erledigt (grün) -> stoerung (rot)
             const s = ['eingeplant', 'umbau', 'erledigt', 'stoerung'];
             const cur = plan[k][i].status || 'eingeplant';
             plan[k][i].status = s[(s.indexOf(cur) + 1) % 4];

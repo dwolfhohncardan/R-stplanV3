@@ -22,10 +22,10 @@
         main { flex-grow: 1; display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.5rem; padding: 1rem; overflow-y: auto; overflow-x: hidden; width: 100%; }
 
         /* STATUS FARBEN */
-        .status-eingeplant { background-color: #334155; border-left: 4px solid #64748b; }
-        .status-umbau { background-color: #1e3a8a; border-left: 4px solid #3b82f6; color: #dbeafe; } 
-        .status-stoerung { background-color: #7f1d1d; border-left: 4px solid #ef4444; color: #fee2e2; }
-        .status-erledigt { background-color: #064e3b; border-left: 4px solid #10b981; color: #d1fae5; }
+        .status-eingeplant { background-color: #334155; border-left: 4px solid #64748b; } /* GRAU */
+        .status-umbau { background-color: #1e3a8a; border-left: 4px solid #3b82f6; color: #dbeafe; } /* BLAU */
+        .status-erledigt { background-color: #064e3b; border-left: 4px solid #10b981; color: #d1fae5; } /* GRÜN */
+        .status-stoerung { background-color: #7f1d1d; border-left: 4px solid #ef4444; color: #fee2e2; } /* ROT */
 
         .machine-badge { min-height: 38px; margin-bottom: 6px; display: flex; flex-direction: row; align-items: center; gap: 4px; padding: 4px 6px; border-radius: 6px; font-weight: 700; font-size: 11px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3); width: 100%; }
         .staff-header { font-size: 11px; font-weight: 900; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
@@ -357,7 +357,8 @@
         }
 
         function toggleStatus(k, i) {
-            const s = ['eingeplant', 'umbau', 'stoerung', 'erledigt'];
+            // Angepasste Reihenfolge: eingeplant (grau) -> umbau (blau) -> erledigt (grün) -> stoerung (rot)
+            const s = ['eingeplant', 'umbau', 'erledigt', 'stoerung'];
             const cur = plan[k][i].status || 'eingeplant';
             plan[k][i].status = s[(s.indexOf(cur) + 1) % 4];
             save();

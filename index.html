@@ -96,6 +96,26 @@
         }
         @media (max-width: 768px) { .mobile-menu-btn { display: block; } }
 
+        /* ── Mobile View Toggle Button ── */
+        .mobile-view-toggle {
+            display: none;
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            z-index: 30;
+            background: #1e40af;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 12px;
+            cursor: pointer;
+            border: none;
+            gap: 6px;
+            align-items: center;
+        }
+        @media (max-width: 768px) { .mobile-view-toggle { display: flex; } }
+
         main {
             flex-grow: 1;
             overflow-y: auto;
@@ -125,6 +145,74 @@
         }
         @media (max-width: 480px) {
             #mainGrid { grid-template-columns: repeat(5, minmax(120px, 1fr)); }
+        }
+
+        /* ── Mobile Single-Day View ── */
+        @media (max-width: 768px) {
+            body.mobile-day-view main {
+                overflow-x: hidden;
+                padding: 56px 0.5rem 0.5rem 0.5rem;
+            }
+            body.mobile-day-view #mainGrid {
+                display: flex;
+                flex-direction: column;
+                min-width: unset;
+                width: 100%;
+                gap: 0;
+            }
+            body.mobile-day-view .day-column {
+                display: none;
+                width: 100%;
+                min-width: unset;
+            }
+            body.mobile-day-view .day-column.active-day {
+                display: flex;
+            }
+            /* Day navigator bar */
+            #dayNavBar {
+                display: none;
+            }
+            body.mobile-day-view #dayNavBar {
+                display: flex;
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                z-index: 30;
+                background: #1e293b;
+                border-top: 1px solid #334155;
+                padding: 6px 4px;
+                gap: 4px;
+                justify-content: space-around;
+                align-items: center;
+            }
+            body.mobile-day-view main {
+                padding-bottom: 60px;
+            }
+        }
+
+        .day-nav-btn {
+            flex: 1;
+            padding: 6px 2px;
+            border-radius: 8px;
+            font-size: 10px;
+            font-weight: 900;
+            text-transform: uppercase;
+            text-align: center;
+            cursor: pointer;
+            border: 2px solid transparent;
+            background: #0f172a;
+            color: #94a3b8;
+            transition: all 0.15s;
+        }
+        .day-nav-btn.active {
+            background: #1d4ed8;
+            color: white;
+            border-color: #3b82f6;
+        }
+        .day-nav-btn.today {
+            border-color: #3b82f6;
+            color: #60a5fa;
         }
 
         .status-eingeplant { background-color: #334155; border-left: 4px solid #64748b; }
@@ -174,6 +262,11 @@
 </head>
 <body>
     <button class="mobile-menu-btn" onclick="toggleMobileSidebar()">☰ Menü</button>
+    <button class="mobile-view-toggle" id="mobileViewToggleBtn" onclick="toggleMobileView()">⬛ Tagesansicht</button>
+
+    <!-- Day Navigator Bar (only visible in mobile-day-view mode) -->
+    <div id="dayNavBar"></div>
+
     <div class="mobile-overlay" id="mobileOverlay" onclick="closeMobileSidebar()"></div>
 
     <div id="pwModal">
@@ -294,11 +387,61 @@
         const db = firebase.database();
 
         const days = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag"];
+        const dayShort = ["Mo", "Di", "Mi", "Do", "Fr"];
         const customStaffColors = { "Lange": "#22c55e", "Saric": "#3b82f6", "Oks": "#ffffff", "Ederle": "#f97316" };
         const defaultPalette = ["#8b5cf6", "#ec4899", "#06b6d4", "#f59e0b", "#14b8a6"];
         let staff = [], machines = [], plan = {}, currentYear, currentWeek, isEditLocked = false, globalStats = null;
-
         let dragSrc = null;
+
+        // ── Mobile Day View State ──
+        let mobileViewActive = false;
+        let activeDayIndex = 0;
+
+        function isMobile() { return window.innerWidth <= 768; }
+
+        function toggleMobileView() {
+            mobileViewActive = !mobileViewActive;
+            const btn = document.getElementById('mobileViewToggleBtn');
+            if (mobileViewActive) {
+                document.body.classList.add('mobile-day-view');
+                btn.textContent = '⬛ Scrollansicht';
+                // Default to today if possible
+                const todayName = new Intl.DateTimeFormat('de-DE', { weekday: 'long' }).format(new Date());
+                const todayIdx = days.indexOf(todayName);
+                activeDayIndex = todayIdx >= 0 ? todayIdx : 0;
+                renderDayNav();
+                applyActiveDayClass();
+            } else {
+                document.body.classList.remove('mobile-day-view');
+                btn.textContent = '⬛ Tagesansicht';
+                renderDayNav();
+                document.querySelectorAll('.day-column').forEach(c => c.classList.remove('active-day'));
+            }
+        }
+
+        function renderDayNav() {
+            const nav = document.getElementById('dayNavBar');
+            if (!mobileViewActive) { nav.innerHTML = ''; return; }
+            const tName = new Intl.DateTimeFormat('de-DE', { weekday: 'long' }).format(new Date());
+            const isAW = (currentWeek === getWeek(new Date()));
+            nav.innerHTML = days.map((d, i) => {
+                const isToday = isAW && d === tName;
+                const isActive = i === activeDayIndex;
+                return `<button class="day-nav-btn ${isActive ? 'active' : ''} ${isToday ? 'today' : ''}" onclick="setActiveDay(${i})">${dayShort[i]}${isToday ? ' ●' : ''}</button>`;
+            }).join('');
+        }
+
+        function setActiveDay(idx) {
+            activeDayIndex = idx;
+            renderDayNav();
+            applyActiveDayClass();
+        }
+
+        function applyActiveDayClass() {
+            document.querySelectorAll('.day-column').forEach((col, i) => {
+                col.classList.toggle('active-day', i === activeDayIndex);
+            });
+        }
 
         function getStaffColor(name, index) {
             if (customStaffColors[name]) return customStaffColors[name];
@@ -454,9 +597,11 @@
             const tName = new Intl.DateTimeFormat('de-DE', { weekday: 'long' }).format(new Date());
             const isAW = (currentWeek === getWeek(new Date()));
 
-            days.forEach(day => {
+            days.forEach((day, dayIdx) => {
                 const col = document.createElement('div');
                 col.className = 'day-column flex flex-col gap-2 min-w-0';
+                // Apply active-day class if mobile day view is active
+                if (mobileViewActive && dayIdx === activeDayIndex) col.classList.add('active-day');
                 col.innerHTML = `<div class="font-black p-2 flex items-center justify-center rounded-lg uppercase text-[9px] border border-slate-700/50 ${(isAW && day === tName) ? 'today-highlight' : 'bg-slate-800/70 text-slate-400'}"><span>${day}</span></div>`;
                 staff.forEach((person, idx) => {
                     const key = `${day}-${person}`;
@@ -499,6 +644,10 @@
                 });
                 main.appendChild(col);
             });
+
+            // Re-render day nav if mobile view is active
+            if (mobileViewActive) renderDayNav();
+
             draw(); renderStaff(); renderPool();
         }
 

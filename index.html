@@ -715,3 +715,804 @@
     </script>
 </body>
 </html>
+Was wurde hinzugefügt (nur auf Mobilgeräten ≤768px):
+
+„Tagesansicht"-Button oben rechts – schaltet zwischen horizontalem Scrollen (bisherig) und einer Einzeltag-Ansicht um
+In der Tagesansicht wird nur ein Tag auf einmal angezeigt – groß und übersichtlich
+Navigationsleiste unten mit Mo–Fr Buttons zum schnellen Wechseln zwischen Tagen, mit Markierung des heutigen Tages
+Die Desktop-Ansicht bleibt vollständig unverändert
+vor einer Stunde
+Füge nun in die Tagesansicht eine Scrollfunktion ein
+
+vor 41 Minuten
+
+
+Revert
+DW
+Base44 AI
+Base44
+
+Hier ist der komplette Code mit der Scrollfunktion in der Tagesansicht – in der Tagesansicht kann man nun per Swipe links/rechts zwischen den Tagen wechseln:
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profi-Rüstplan | KI-Deep-Analysis</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-database-compat.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+
+    <style>
+        :root { --bg-main: #0f172a; --bg-sidebar: #1e293b; --accent: #3b82f6; }
+
+        * { box-sizing: border-box; }
+
+        html, body {
+            background-color: var(--bg-main);
+            color: #f1f5f9;
+            margin: 0; padding: 0;
+            font-family: ui-sans-serif, system-ui, sans-serif;
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+            touch-action: pan-y pan-x pinch-zoom;
+        }
+
+        .app-container {
+            display: flex;
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+        }
+        
+        aside { 
+            width: 320px;
+            background-color: var(--bg-sidebar);
+            border-right: 1px solid #334155; 
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0; 
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+            position: relative;
+            z-index: 50;
+            overflow: hidden;
+        }
+        aside.collapsed { width: 50px; }
+        aside.collapsed .sidebar-content { display: none; }
+
+        .sidebar-content {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .sidebar-scroll {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain;
+            padding: 1rem;
+        }
+
+        .toggle-btn {
+            position: absolute; right: 10px; top: 15px;
+            cursor: pointer; background: #334155; color: white;
+            padding: 2px 8px; border-radius: 4px; font-weight: bold; z-index: 10;
+        }
+        
+        @media (max-width: 768px) {
+            aside {
+                position: fixed; left: 0; top: 0; height: 100vh;
+                width: 280px; transform: translateX(-100%);
+            }
+            aside.mobile-open { transform: translateX(0); }
+            aside.collapsed { width: 280px; transform: translateX(-100%); }
+            aside.collapsed.mobile-open { transform: translateX(0); }
+            aside.collapsed .sidebar-content { display: flex; flex-direction: column; flex: 1; }
+            .toggle-btn { display: none; }
+            .mobile-overlay {
+                display: none; position: fixed; inset: 0;
+                background: rgba(0,0,0,0.5); z-index: 40;
+            }
+            .mobile-overlay.active { display: block; }
+        }
+        
+        .mobile-menu-btn {
+            display: none; position: fixed; top: 10px; left: 10px;
+            z-index: 30; background: #334155; color: white;
+            padding: 8px 12px; border-radius: 8px; font-weight: bold;
+            cursor: pointer; border: none;
+        }
+        @media (max-width: 768px) { .mobile-menu-btn { display: block; } }
+
+        /* ── Mobile View Toggle Button ── */
+        .mobile-view-toggle {
+            display: none;
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            z-index: 30;
+            background: #1e40af;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 12px;
+            cursor: pointer;
+            border: none;
+            gap: 6px;
+            align-items: center;
+        }
+        @media (max-width: 768px) { .mobile-view-toggle { display: flex; } }
+
+        main {
+            flex-grow: 1;
+            overflow-y: auto;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain;
+            touch-action: pan-x pan-y pinch-zoom;
+            padding: 1rem;
+            width: 100%;
+            min-width: 0;
+        }
+
+        #mainGrid {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(160px, 1fr));
+            gap: 0.5rem;
+            min-width: max-content;
+            width: 100%;
+        }
+
+        @media (max-width: 1200px) {
+            #mainGrid { grid-template-columns: repeat(3, minmax(160px, 1fr)); }
+        }
+        @media (max-width: 768px) {
+            main { padding: 56px 0.5rem 0.5rem 0.5rem; }
+            #mainGrid { grid-template-columns: repeat(5, minmax(140px, 1fr)); gap: 0.4rem; }
+        }
+        @media (max-width: 480px) {
+            #mainGrid { grid-template-columns: repeat(5, minmax(120px, 1fr)); }
+        }
+
+        /* ── Mobile Single-Day View ── */
+        @media (max-width: 768px) {
+            body.mobile-day-view main {
+                overflow-x: hidden;
+                overflow-y: hidden;
+                padding: 56px 0 0 0;
+            }
+
+            /* Swipe container */
+            body.mobile-day-view #mainGrid {
+                display: flex;
+                flex-direction: row;
+                min-width: unset;
+                width: calc(100% * 5);
+                gap: 0;
+                height: 100%;
+                transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+
+            body.mobile-day-view .day-column {
+                width: 20%;
+                flex-shrink: 0;
+                min-width: unset;
+                height: 100%;
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+                padding: 0.5rem 0.5rem 70px 0.5rem;
+            }
+
+            #dayNavBar {
+                display: none;
+            }
+            body.mobile-day-view #dayNavBar {
+                display: flex;
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                z-index: 30;
+                background: #1e293b;
+                border-top: 1px solid #334155;
+                padding: 6px 4px;
+                gap: 4px;
+                justify-content: space-around;
+                align-items: center;
+            }
+        }
+
+        .day-nav-btn {
+            flex: 1;
+            padding: 6px 2px;
+            border-radius: 8px;
+            font-size: 10px;
+            font-weight: 900;
+            text-transform: uppercase;
+            text-align: center;
+            cursor: pointer;
+            border: 2px solid transparent;
+            background: #0f172a;
+            color: #94a3b8;
+            transition: all 0.15s;
+        }
+        .day-nav-btn.active {
+            background: #1d4ed8;
+            color: white;
+            border-color: #3b82f6;
+        }
+        .day-nav-btn.today {
+            border-color: #3b82f6;
+            color: #60a5fa;
+        }
+
+        .status-eingeplant { background-color: #334155; border-left: 4px solid #64748b; }
+        .status-umbau { background-color: #1e3a8a; border-left: 4px solid #3b82f6; color: #dbeafe; }
+        .status-erledigt { background-color: #064e3b; border-left: 4px solid #10b981; color: #d1fae5; }
+        .status-stoerung { 
+            background-color: #7f1d1d; border: 2px solid #ef4444 !important; color: #fee2e2; 
+            box-shadow: 0 0 8px 2px rgba(239,68,68,0.6), 0 0 18px 4px rgba(239,68,68,0.3);
+            animation: stoerung-pulse 1.6s ease-in-out infinite;
+        }
+        @keyframes stoerung-pulse {
+            0%   { box-shadow: 0 0 6px 2px rgba(239,68,68,0.5), 0 0 14px 4px rgba(239,68,68,0.2); }
+            50%  { box-shadow: 0 0 14px 5px rgba(239,68,68,0.85), 0 0 28px 8px rgba(239,68,68,0.4); }
+            100% { box-shadow: 0 0 6px 2px rgba(239,68,68,0.5), 0 0 14px 4px rgba(239,68,68,0.2); }
+        }
+
+        .machine-badge { 
+            min-height: 38px; margin-bottom: 6px; display: flex; flex-direction: row; align-items: center; 
+            gap: 4px; padding: 4px 6px; border-radius: 6px; font-weight: 700; font-size: 11px; 
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3); width: 100%; flex-wrap: wrap;
+            cursor: grab; transition: opacity 0.2s, transform 0.15s;
+        }
+        .machine-badge:active { cursor: grabbing; }
+        .machine-badge.dragging { opacity: 0.4; transform: scale(0.97); }
+        @media (max-width: 480px) { .machine-badge { font-size: 10px; padding: 3px 5px; min-height: 34px; } }
+        
+        .staff-header { font-size: 11px; font-weight: 900; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+        @media (max-width: 480px) { .staff-header { font-size: 10px; } }
+        
+        #pool { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+        .note-area-inline { background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; color: white; font-size: 9px; padding: 2px 4px; height: 22px; flex-grow: 1; outline: none; resize: none; overflow: hidden; white-space: nowrap; min-width: 50px; }
+        .admin-input { background: #0f172a; border: 1px solid #334155; border-radius: 6px; padding: 4px 8px; font-size: 11px; color: white; width: 100%; outline: none; }
+        .delete-btn { opacity: 0; transition: opacity 0.2s; color: #ef4444; font-size: 14px; cursor: pointer; }
+        .admin-item:hover .delete-btn { opacity: 1; }
+        @media (max-width: 768px) { .delete-btn { opacity: 0.7; } }
+        
+        #pwModal, #statsModal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 100; align-items: center; justify-content: center; backdrop-filter: blur(8px); padding: 1rem; }
+        #pwModal > div, #statsModal > div { max-width: 95vw; max-height: 95vh; overflow-y: auto; }
+        @media (max-width: 768px) { #statsModal > div { width: 100% !important; padding: 1rem; border-radius: 1rem; } #statsResult { grid-template-columns: 1fr !important; } }
+        
+        .today-highlight { background-color: #3b82f6 !important; color: white !important; border: 2px solid #60a5fa !important; box-shadow: 0 0 10px rgba(59,130,246,0.4); }
+        .day-column { min-width: 0; }
+        @media (max-width: 768px) { .day-column { min-width: 140px; } }
+
+        .drop-target { outline: 2px dashed #3b82f6; outline-offset: 2px; background-color: rgba(59,130,246,0.08) !important; }
+    </style>
+</head>
+<body>
+    <button class="mobile-menu-btn" onclick="toggleMobileSidebar()">☰ Menü</button>
+    <button class="mobile-view-toggle" id="mobileViewToggleBtn" onclick="toggleMobileView()">⬛ Tagesansicht</button>
+
+    <div id="dayNavBar"></div>
+    <div class="mobile-overlay" id="mobileOverlay" onclick="closeMobileSidebar()"></div>
+
+    <div id="pwModal">
+        <div class="bg-slate-800 p-8 rounded-3xl shadow-2xl w-96 border border-slate-600 text-center">
+            <h3 class="text-xl font-black mb-6 uppercase italic">Berechtigung prüfen</h3>
+            <input type="password" id="pwInput" class="w-full bg-slate-900 border-2 border-slate-700 rounded-xl p-3 mb-6 outline-none focus:border-blue-500 text-white text-center" placeholder="Passwort...">
+            <div class="flex gap-4">
+                <button onclick="closeModal()" class="flex-1 bg-slate-700 py-3 rounded-xl font-bold">Abbruch</button>
+                <button onclick="checkPassword()" class="flex-1 bg-blue-600 py-3 rounded-xl font-bold">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="statsModal">
+        <div class="bg-slate-800 p-8 rounded-3xl shadow-2xl w-[700px] max-h-[90vh] overflow-y-auto border border-slate-600 relative">
+            <button onclick="closeStats()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-2xl">×</button>
+            <h3 class="text-xl md:text-2xl font-black mb-2 uppercase italic text-blue-400">🤖 KI Performance-Analyse</h3>
+            <div class="bg-slate-900/50 p-4 rounded-2xl mb-6 flex flex-col md:flex-row gap-4 items-stretch md:items-end border border-slate-700">
+                <div class="flex-1">
+                    <label class="text-[9px] uppercase font-bold text-slate-500">Start KW</label>
+                    <input type="number" id="statsFrom" class="admin-input block w-full">
+                </div>
+                <div class="flex-1">
+                    <label class="text-[9px] uppercase font-bold text-slate-500">Ende KW</label>
+                    <input type="number" id="statsTo" class="admin-input block w-full">
+                </div>
+                <button onclick="runDeepAnalysis()" class="bg-blue-600 px-6 py-2 rounded-lg font-bold text-xs uppercase hover:bg-blue-500 whitespace-nowrap">Analyse starten</button>
+            </div>
+            <div id="statsResult" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+            <button onclick="exportDeepPDF()" class="w-full mt-8 bg-emerald-600 py-4 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-emerald-500 transition-colors">Export als .PDF Report</button>
+        </div>
+    </div>
+
+    <div class="app-container">
+        <aside id="sidebar">
+            <div class="toggle-btn" onclick="toggleSidebar()" id="sidebarBtn">«</div>
+            <div class="sidebar-content">
+                <div class="p-4 md:p-6 border-b border-slate-700 text-center flex items-center justify-between flex-shrink-0">
+                    <h2 class="text-white font-black text-lg md:text-xl italic uppercase tracking-tighter">Rüstplan LIVE</h2>
+                    <button class="md:hidden text-slate-400 text-2xl" onclick="closeMobileSidebar()">×</button>
+                </div>
+                <div class="sidebar-scroll space-y-4">
+                    <details class="group">
+                        <summary class="text-[9px] font-black text-slate-500 uppercase flex justify-between items-center mb-2 ml-1 cursor-pointer">
+                            <span>KI & System</span>
+                            <span class="text-[14px] group-open:rotate-180 transition-transform">▼</span>
+                        </summary>
+                        <div class="space-y-4 pt-2 pb-4 border-b border-slate-800 mb-2">
+                            <button onclick="openStats()" class="w-full bg-gradient-to-br from-indigo-600 to-blue-700 py-3 rounded-xl font-black uppercase italic tracking-tighter shadow-xl">🤖 KI Statistik</button>
+                            <div class="bg-slate-800 p-4 rounded-2xl border border-slate-600 text-center">
+                                <span class="text-[9px] font-black uppercase text-slate-500 block mb-2">Planungsschutz</span>
+                                <button id="lockBtn" onclick="handleLockButton()" class="w-full py-2 rounded-xl font-black text-[10px] uppercase bg-emerald-600 text-white shadow-lg">🔓 Aktiv</button>
+                            </div>
+                        </div>
+                    </details>
+                    <details class="group">
+                        <summary class="text-[9px] font-black text-slate-500 uppercase flex justify-between items-center mb-2 ml-1 cursor-pointer">
+                            <span>Kalenderwochen</span>
+                            <span class="text-[14px] group-open:rotate-180 transition-transform">▼</span>
+                        </summary>
+                        <div class="pt-2 pb-4 border-b border-slate-800 mb-2">
+                            <div class="bg-slate-900 p-4 rounded-2xl border border-slate-700 text-center">
+                                <div class="flex items-center justify-between text-white mb-2 font-black">
+                                    <button onclick="changeWeek(-1)" class="p-2 hover:text-blue-400">◀</button>
+                                    <span id="weekDisplay" class="italic text-sm">KW --</span>
+                                    <button onclick="changeWeek(1)" class="p-2 hover:text-blue-400">▶</button>
+                                </div>
+                                <button onclick="goToCurrentWeek()" class="w-full text-[9px] bg-blue-600/20 text-blue-400 py-1 rounded-lg uppercase font-bold border border-blue-500/30">Heute</button>
+                            </div>
+                        </div>
+                    </details>
+                    <details class="group">
+                        <summary class="text-[9px] font-black text-slate-500 uppercase flex justify-between items-center mb-2 ml-1 cursor-pointer">
+                            <span>Personal</span>
+                            <span class="text-[14px] group-open:rotate-180 transition-transform">▼</span>
+                        </summary>
+                        <div class="pt-2 pb-4 border-b border-slate-800 mb-2">
+                            <div class="flex gap-1 mb-3">
+                                <input type="text" id="newStaff" class="admin-input flex-1" placeholder="+ Name">
+                                <button onclick="addStaff()" class="text-blue-500 font-black text-xl px-2">+</button>
+                            </div>
+                            <div id="staffList" class="flex flex-wrap gap-2"></div>
+                        </div>
+                    </details>
+                    <details class="group">
+                        <summary class="text-[9px] font-black text-slate-500 uppercase flex justify-between items-center mb-2 ml-1 cursor-pointer">
+                            <span>Maschinen</span>
+                            <span class="text-[14px] group-open:rotate-180 transition-transform">▼</span>
+                        </summary>
+                        <div class="pt-2">
+                            <div class="flex gap-1 mb-3">
+                                <input type="text" id="newMachine" class="admin-input flex-1" placeholder="+ Masch.">
+                                <button onclick="addMachine()" class="text-blue-500 font-black text-xl px-2">+</button>
+                            </div>
+                            <div id="pool"></div>
+                        </div>
+                    </details>
+                </div>
+            </div>
+        </aside>
+        <main id="mainWrapper">
+            <div id="mainGrid"></div>
+        </main>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyAmT1v__I-e0dfRLicdG9SN4uNt4lEKezA",
+            authDomain: "test-dee17.firebaseapp.com",
+            databaseURL: "https://test-dee17-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "test-dee17",
+            storageBucket: "test-dee17.firebasestorage.app",
+            messagingSenderId: "1010731540568",
+            appId: "1:1010731540568:web:1a32e27dd3aba0130fea2d"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        const days = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag"];
+        const dayShort = ["Mo", "Di", "Mi", "Do", "Fr"];
+        const customStaffColors = { "Lange": "#22c55e", "Saric": "#3b82f6", "Oks": "#ffffff", "Ederle": "#f97316" };
+        const defaultPalette = ["#8b5cf6", "#ec4899", "#06b6d4", "#f59e0b", "#14b8a6"];
+        let staff = [], machines = [], plan = {}, currentYear, currentWeek, isEditLocked = false, globalStats = null;
+        let dragSrc = null;
+
+        // ── Mobile Day View State ──
+        let mobileViewActive = false;
+        let activeDayIndex = 0;
+
+        // ── Touch / Swipe State ──
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let isSwiping = false;
+
+        function isMobile() { return window.innerWidth <= 768; }
+
+        function applySlidePosition(animated) {
+            const grid = document.getElementById('mainGrid');
+            if (!mobileViewActive) return;
+            const vw = window.innerWidth;
+            grid.style.transition = animated ? 'transform 0.35s cubic-bezier(0.4, 0, 0.2, 1)' : 'none';
+            grid.style.transform = `translateX(-${activeDayIndex * vw}px)`;
+        }
+
+        function toggleMobileView() {
+            mobileViewActive = !mobileViewActive;
+            const btn = document.getElementById('mobileViewToggleBtn');
+            if (mobileViewActive) {
+                document.body.classList.add('mobile-day-view');
+                btn.textContent = '⬛ Scrollansicht';
+                const todayName = new Intl.DateTimeFormat('de-DE', { weekday: 'long' }).format(new Date());
+                const todayIdx = days.indexOf(todayName);
+                activeDayIndex = todayIdx >= 0 ? todayIdx : 0;
+                applySlidePosition(false);
+                renderDayNav();
+                initSwipe();
+            } else {
+                document.body.classList.remove('mobile-day-view');
+                btn.textContent = '⬛ Tagesansicht';
+                const grid = document.getElementById('mainGrid');
+                grid.style.transform = '';
+                grid.style.transition = '';
+                renderDayNav();
+                removeSwipe();
+            }
+        }
+
+        function renderDayNav() {
+            const nav = document.getElementById('dayNavBar');
+            if (!mobileViewActive) { nav.innerHTML = ''; return; }
+            const tName = new Intl.DateTimeFormat('de-DE', { weekday: 'long' }).format(new Date());
+            const isAW = (currentWeek === getWeek(new Date()));
+            nav.innerHTML = days.map((d, i) => {
+                const isToday = isAW && d === tName;
+                const isActive = i === activeDayIndex;
+                return `<button class="day-nav-btn ${isActive ? 'active' : ''} ${isToday ? 'today' : ''}" onclick="setActiveDay(${i})">${dayShort[i]}${isToday ? ' ●' : ''}</button>`;
+            }).join('');
+        }
+
+        function setActiveDay(idx) {
+            activeDayIndex = idx;
+            applySlidePosition(true);
+            renderDayNav();
+        }
+
+        // ── Swipe Handlers ──
+        function onTouchStart(e) {
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+            isSwiping = false;
+        }
+
+        function onTouchMove(e) {
+            const dx = e.touches[0].clientX - touchStartX;
+            const dy = e.touches[0].clientY - touchStartY;
+            // Only treat as horizontal swipe if mostly horizontal
+            if (!isSwiping && Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 10) {
+                isSwiping = true;
+            }
+            if (isSwiping) {
+                // Live drag feedback
+                const vw = window.innerWidth;
+                const offset = activeDayIndex * vw - dx;
+                const grid = document.getElementById('mainGrid');
+                grid.style.transition = 'none';
+                grid.style.transform = `translateX(-${offset}px)`;
+                e.preventDefault();
+            }
+        }
+
+        function onTouchEnd(e) {
+            if (!isSwiping) return;
+            const dx = e.changedTouches[0].clientX - touchStartX;
+            const threshold = window.innerWidth * 0.25;
+            if (dx < -threshold && activeDayIndex < days.length - 1) {
+                activeDayIndex++;
+            } else if (dx > threshold && activeDayIndex > 0) {
+                activeDayIndex--;
+            }
+            applySlidePosition(true);
+            renderDayNav();
+            isSwiping = false;
+        }
+
+        function initSwipe() {
+            const wrapper = document.getElementById('mainWrapper');
+            wrapper.addEventListener('touchstart', onTouchStart, { passive: true });
+            wrapper.addEventListener('touchmove', onTouchMove, { passive: false });
+            wrapper.addEventListener('touchend', onTouchEnd, { passive: true });
+        }
+
+        function removeSwipe() {
+            const wrapper = document.getElementById('mainWrapper');
+            wrapper.removeEventListener('touchstart', onTouchStart);
+            wrapper.removeEventListener('touchmove', onTouchMove);
+            wrapper.removeEventListener('touchend', onTouchEnd);
+        }
+
+        function getStaffColor(name, index) {
+            if (customStaffColors[name]) return customStaffColors[name];
+            return defaultPalette[index % defaultPalette.length];
+        }
+
+        function toggleSidebar() {
+            const sb = document.getElementById('sidebar');
+            const btn = document.getElementById('sidebarBtn');
+            sb.classList.toggle('collapsed');
+            btn.innerText = sb.classList.contains('collapsed') ? '»' : '«';
+        }
+        function toggleMobileSidebar() {
+            const sb = document.getElementById('sidebar');
+            const overlay = document.getElementById('mobileOverlay');
+            sb.classList.toggle('mobile-open');
+            overlay.classList.toggle('active');
+        }
+        function closeMobileSidebar() {
+            const sb = document.getElementById('sidebar');
+            const overlay = document.getElementById('mobileOverlay');
+            sb.classList.remove('mobile-open');
+            overlay.classList.remove('active');
+        }
+
+        function initApp() {
+            const now = new Date();
+            currentYear = now.getFullYear();
+            currentWeek = getWeek(now);
+            document.getElementById('statsFrom').value = currentWeek;
+            document.getElementById('statsTo').value = currentWeek;
+            listenToDatabase();
+        }
+
+        function openStats() { closeMobileSidebar(); document.getElementById('statsModal').style.display = 'flex'; runDeepAnalysis(); }
+        function closeStats() { document.getElementById('statsModal').style.display = 'none'; }
+
+        async function runDeepAnalysis() {
+            const from = parseInt(document.getElementById('statsFrom').value);
+            const to = parseInt(document.getElementById('statsTo').value);
+            const resultDiv = document.getElementById('statsResult');
+            resultDiv.innerHTML = '<div class="col-span-2 text-blue-400 animate-pulse text-center py-20 font-black uppercase tracking-widest">KI berechnet Statistiken...</div>';
+            const snapshot = await db.ref('rustplan_root').once('value');
+            const data = snapshot.val() || {};
+            let stats = { staffCounts: {}, machineRuest: {}, machineStoerung: {}, stoerungenProWoche: {}, totalRuest: 0, totalStoerung: 0, details: [] };
+            for (let w = from; w <= to; w++) {
+                const weekKey = `plan-${currentYear}-W${w}`;
+                const weekData = data[weekKey] || {};
+                stats.stoerungenProWoche[w] = 0;
+                Object.keys(weekData).forEach(slotKey => {
+                    const [day, person] = slotKey.split('-');
+                    weekData[slotKey].forEach(m => {
+                        stats.totalRuest++;
+                        stats.machineRuest[m.name] = (stats.machineRuest[m.name] || 0) + 1;
+                        stats.staffCounts[person] = (stats.staffCounts[person] || 0) + 1;
+                        if (m.status === 'stoerung') { stats.totalStoerung++; stats.machineStoerung[m.name] = (stats.machineStoerung[m.name] || 0) + 1; stats.stoerungenProWoche[w]++; }
+                        stats.details.push({ kw: w, tag: day, name: person, maschine: m.name, status: m.status });
+                    });
+                });
+            }
+            const mid = Math.floor((from + to) / 2);
+            let firstHalfS = 0, secondHalfS = 0;
+            Object.keys(stats.stoerungenProWoche).forEach(w => { if (parseInt(w) <= mid) firstHalfS += stats.stoerungenProWoche[w]; else secondHalfS += stats.stoerungenProWoche[w]; });
+            const trend = secondHalfS > firstHalfS ? "Steigend 📈" : (secondHalfS < firstHalfS ? "Sinkend 📉" : "Stabil ➡️");
+            globalStats = { ...stats, trend };
+            renderDeepStatsHTML(globalStats);
+        }
+
+        function renderDeepStatsHTML(s) {
+            const bestStaff = Object.entries(s.staffCounts).sort((a,b) => b[1]-a[1])[0] || ["-", 0];
+            const mostRuestMachine = Object.entries(s.machineRuest).sort((a,b) => b[1]-a[1])[0] || ["-", 0];
+            const mostStoerungMachine = Object.entries(s.machineStoerung).sort((a,b) => b[1]-a[1])[0] || ["-", 0];
+            document.getElementById('statsResult').innerHTML = `
+                <div class="bg-slate-900 p-5 rounded-3xl border border-blue-500/20">
+                    <span class="text-[10px] uppercase font-black text-slate-500">🏆 meisten Rüstaufträge</span>
+                    <div class="text-xl md:text-2xl font-black text-white mt-1">${bestStaff[0]}</div>
+                    <div class="text-xs text-blue-400 font-bold uppercase">${bestStaff[1]} erledigt</div>
+                </div>
+                <div class="bg-slate-900 p-5 rounded-3xl border border-rose-500/20">
+                    <span class="text-[10px] uppercase font-black text-slate-500">🚨 Störungstrend</span>
+                    <div class="text-xl md:text-2xl font-black text-white mt-1">${s.trend}</div>
+                    <div class="text-xs text-rose-400 font-bold uppercase">${s.totalStoerung} Störungen</div>
+                </div>
+                <div class="bg-slate-900 p-5 rounded-3xl border border-amber-500/20">
+                    <span class="text-[10px] uppercase font-black text-slate-500">🛠️ Häufigster Umbau</span>
+                    <div class="text-xl md:text-2xl font-black text-white mt-1">${mostRuestMachine[0]}</div>
+                    <div class="text-xs text-amber-400 font-bold uppercase">${mostRuestMachine[1]} Mal</div>
+                </div>
+                <div class="bg-slate-900 p-5 rounded-3xl border border-rose-600/20">
+                    <span class="text-[10px] uppercase font-black text-slate-500">⚠️ Problem-Maschine</span>
+                    <div class="text-xl md:text-2xl font-black text-rose-500 mt-1">${mostStoerungMachine[0]}</div>
+                    <div class="text-xs text-rose-300 font-bold uppercase">${mostStoerungMachine[1]} Störungen</div>
+                </div>`;
+        }
+
+        function exportDeepPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            doc.setFontSize(22); doc.text("KI ANALYSEBERICHT", 14, 25);
+            doc.setFontSize(10); doc.text(`Zeitraum: KW ${document.getElementById('statsFrom').value} bis ${document.getElementById('statsTo').value}`, 14, 32);
+            doc.autoTable({
+                startY: 40,
+                head: [['Metrik', 'Ergebnis']],
+                body: [
+                    ['Bester Mitarbeiter', globalStats.staffCounts ? Object.entries(globalStats.staffCounts).sort((a,b)=>b[1]-a[1])[0][0] : '-'],
+                    ['Gesamtzahl Umbaue', globalStats.totalRuest],
+                    ['Gesamtzahl Störungen', globalStats.totalStoerung],
+                    ['Störungstrend', globalStats.trend],
+                    ['Häufigster Umbau (Maschine)', Object.entries(globalStats.machineRuest).sort((a,b)=>b[1]-a[1])[0][0]]
+                ],
+                theme: 'striped', headStyles: {fillColor: [30, 41, 59]}
+            });
+            doc.save("KI_Performance_Report.pdf");
+        }
+
+        function handleLockButton() {
+            if (isEditLocked) { document.getElementById('pwModal').style.display = 'flex'; document.getElementById('pwInput').focus(); }
+            else { isEditLocked = true; updateLockButtonUI(); render(); }
+        }
+        function checkPassword() {
+            if (document.getElementById('pwInput').value === "Gelenkwelle") { isEditLocked = false; updateLockButtonUI(); closeModal(); render(); }
+            else { alert("Falsch!"); }
+        }
+        function closeModal() { document.getElementById('pwModal').style.display = 'none'; document.getElementById('pwInput').value = ''; }
+        function updateLockButtonUI() {
+            const btn = document.getElementById('lockBtn');
+            btn.innerText = isEditLocked ? "🔒 Zu" : "🔓 Auf";
+            btn.className = `w-full py-2 rounded-xl font-black text-[10px] uppercase ${isEditLocked ? 'bg-rose-600' : 'bg-emerald-600'} text-white shadow-lg`;
+        }
+
+        function listenToDatabase() {
+            db.ref('rustplan_root').on('value', (snapshot) => {
+                const data = snapshot.val() || {};
+                staff = data.staff || ["Mitarbeiter 1"];
+                machines = data.machines || ["Maschine 1"];
+                plan = data[`plan-${currentYear}-W${currentWeek}`] || {};
+                document.getElementById('weekDisplay').innerText = `KW ${currentWeek.toString().padStart(2, '0')}`;
+                render();
+            });
+        }
+
+        function save() {
+            db.ref('rustplan_root').update({
+                [`/plan-${currentYear}-W${currentWeek}`]: plan,
+                [`/staff`]: staff,
+                [`/machines`]: machines
+            });
+        }
+
+        function render() {
+            const main = document.getElementById('mainGrid');
+            main.innerHTML = '';
+            const tName = new Intl.DateTimeFormat('de-DE', { weekday: 'long' }).format(new Date());
+            const isAW = (currentWeek === getWeek(new Date()));
+
+            days.forEach((day, dayIdx) => {
+                const col = document.createElement('div');
+                col.className = 'day-column flex flex-col gap-2 min-w-0';
+                col.innerHTML = `<div class="font-black p-2 flex items-center justify-center rounded-lg uppercase text-[9px] border border-slate-700/50 ${(isAW && day === tName) ? 'today-highlight' : 'bg-slate-800/70 text-slate-400'}"><span>${day}</span></div>`;
+                staff.forEach((person, idx) => {
+                    const key = `${day}-${person}`;
+                    const color = getStaffColor(person, idx);
+                    const slot = document.createElement('div');
+                    slot.className = `bg-slate-900/40 rounded-lg p-2 flex flex-col border border-slate-800/50 mb-1`;
+                    slot.style.borderLeft = `3px solid ${color}`;
+                    slot.setAttribute('data-key', key);
+
+                    slot.addEventListener('dragover', (e) => {
+                        e.preventDefault();
+                        slot.classList.add('drop-target');
+                    });
+                    slot.addEventListener('dragleave', () => slot.classList.remove('drop-target'));
+                    slot.addEventListener('drop', (e) => {
+                        e.preventDefault();
+                        slot.classList.remove('drop-target');
+                        if (isEditLocked) return;
+                        const targetKey = slot.getAttribute('data-key');
+                        if (dragSrc) {
+                            const { key: srcKey, idx: srcIdx } = dragSrc;
+                            if (srcKey === targetKey) { dragSrc = null; return; }
+                            const item = plan[srcKey].splice(srcIdx, 1)[0];
+                            if (!plan[targetKey]) plan[targetKey] = [];
+                            plan[targetKey].push(item);
+                            dragSrc = null;
+                            save();
+                        } else {
+                            const name = e.dataTransfer.getData("text");
+                            if (!name) return;
+                            if (!plan[targetKey]) plan[targetKey] = [];
+                            plan[targetKey].push({ name, status: 'eingeplant' });
+                            save();
+                        }
+                    });
+
+                    slot.innerHTML += `<div class="staff-header" style="color:${color}">${person}</div><div id="${key}"></div>`;
+                    col.appendChild(slot);
+                });
+                main.appendChild(col);
+            });
+
+            // Restore slide position after re-render
+            if (mobileViewActive) {
+                applySlidePosition(false);
+                renderDayNav();
+            }
+
+            draw(); renderStaff(); renderPool();
+        }
+
+        function draw() {
+            document.querySelectorAll('[data-key]').forEach(el => {
+                const key = el.getAttribute('data-key');
+                const container = document.getElementById(key);
+                if (!container) return;
+                container.innerHTML = '';
+                (plan[key] || []).forEach((m, idx) => {
+                    const b = document.createElement('div');
+                    b.className = `machine-badge status-${m.status || 'eingeplant'}`;
+                    b.draggable = !isEditLocked;
+
+                    b.addEventListener('dragstart', (e) => {
+                        if (isEditLocked) { e.preventDefault(); return; }
+                        dragSrc = { key, idx };
+                        e.dataTransfer.effectAllowed = 'move';
+                        setTimeout(() => b.classList.add('dragging'), 0);
+                    });
+                    b.addEventListener('dragend', () => {
+                        dragSrc = null;
+                        b.classList.remove('dragging');
+                    });
+
+                    const n = document.createElement('span');
+                    n.className = "whitespace-nowrap overflow-hidden text-ellipsis flex-1 min-w-0 cursor-pointer mr-2";
+                    n.onclick = () => toggleStatus(key, idx);
+                    n.innerText = m.name;
+                    b.appendChild(n);
+
+                    if (m.showNote === true) {
+                        const a = document.createElement('textarea');
+                        a.className = "note-area-inline"; a.value = m.note || "";
+                        a.onchange = (e) => { plan[key][idx].note = e.target.value; save(); };
+                        b.appendChild(a);
+                    }
+
+                    const i = document.createElement('div');
+                    i.className = "flex items-center gap-1 ml-auto flex-shrink-0";
+                    i.innerHTML = `<span onclick="toggleNoteInput('${key}', ${idx})" class="cursor-pointer ${m.note ? 'text-yellow-400' : 'opacity-60'}">💬</span>${!isEditLocked ? `<span onclick="removeFromPlan('${key}', ${idx})" class="cursor-pointer opacity-40">×</span>` : ''}`;
+                    b.appendChild(i);
+                    container.appendChild(b);
+                });
+            });
+        }
+
+        function toggleStatus(k, i) {
+            const s = ['eingeplant', 'umbau', 'erledigt', 'stoerung'];
+            const cur = plan[k][i].status || 'eingeplant';
+            plan[k][i].status = s[(s.indexOf(cur) + 1) % 4];
+            save();
+        }
+
+        function removeFromPlan(k, i) { if (!isEditLocked) { plan[k].splice(i, 1); save(); } }
+        function changeWeek(dir) { currentWeek += dir; listenToDatabase(); }
+        function goToCurrentWeek() { currentWeek = getWeek(new Date()); listenToDatabase(); }
+        function getWeek(d) { d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())); d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay()||7)); return Math.ceil((((d - new Date(Date.UTC(d.getUTCFullYear(),0,1))) / 86400000) + 1)/7); }
+        function toggleNoteInput(k, i) { if (plan[k][i].note === undefined) plan[k][i].note = ""; plan[k][i].showNote = !plan[k][i].showNote; save(); }
+        function addStaff() { const v = document.getElementById('newStaff').value.trim(); if(v){ staff.push(v); save(); document.getElementById('newStaff').value=''; } }
+        function addMachine() { const v = document.getElementById('newMachine').value.trim(); if(v){ machines.push(v); save(); document.getElementById('newMachine').value=''; } }
+        function renderStaff() { document.getElementById('staffList').innerHTML = staff.map(n => `<div class="admin-item bg-slate-800 px-2 py-1 rounded text-[10px] flex items-center gap-2">${n}<span onclick="staff=staff.filter(s=>s!=='${n}');save();" class="delete-btn">×</span></div>`).join(''); }
+        function renderPool() { document.getElementById('pool').innerHTML = machines.map(m => `<div draggable="true" ondragstart="dragSrc=null; event.dataTransfer.setData('text', '${m}')" class="admin-item bg-slate-800 p-2 rounded text-[9px] flex justify-between items-center cursor-move"><span>⚙️ ${m}</span><span onclick="machines=machines.filter(x=>x!=='${m}');save();" class="delete-btn">×</span></div>`).join(''); }
+        window.onload = initApp;
+    </script>
+</body>
+</html>

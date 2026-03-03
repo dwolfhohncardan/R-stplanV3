@@ -257,20 +257,28 @@
                             </div>
                         </div>
                     </details>
-                    <div class="bg-slate-900 p-4 rounded-2xl border border-slate-700 text-center">
-                        <div class="flex items-center justify-between text-white mb-2 font-black">
-                            <button onclick="changeWeek(-1)" class="p-2 hover:text-blue-400">◀</button>
-                            <span id="weekDisplay" class="italic text-sm">KW --</span>
-                            <button onclick="changeWeek(1)" class="p-2 hover:text-blue-400">▶</button>
+                    <details class="group">
+                        <summary class="text-[9px] font-black text-slate-500 uppercase flex justify-between items-center mb-2 ml-1 cursor-pointer">
+                            <span>Kalenderwochen</span>
+                            <span class="text-[14px] group-open:rotate-180 transition-transform">▼</span>
+                        </summary>
+                        <div class="pt-2 pb-4 border-b border-slate-800 mb-2">
+                            <div class="bg-slate-900 p-4 rounded-2xl border border-slate-700 text-center">
+                                <div class="flex items-center justify-between text-white mb-2 font-black">
+                                    <button onclick="changeWeek(-1)" class="p-2 hover:text-blue-400">◀</button>
+                                    <span id="weekDisplay" class="italic text-sm">KW --</span>
+                                    <button onclick="changeWeek(1)" class="p-2 hover:text-blue-400">▶</button>
+                                </div>
+                                <button onclick="goToCurrentWeek()" class="w-full text-[9px] bg-blue-600/20 text-blue-400 py-1 rounded-lg uppercase font-bold border border-blue-500/30">Heute</button>
+                            </div>
                         </div>
-                        <button onclick="goToCurrentWeek()" class="w-full text-[9px] bg-blue-600/20 text-blue-400 py-1 rounded-lg uppercase font-bold border border-blue-500/30">Heute</button>
-                    </div>
-                    <details open class="group">
+                    </details>
+                    <details class="group">
                         <summary class="text-[9px] font-black text-slate-500 uppercase flex justify-between items-center mb-2 ml-1 cursor-pointer">
                             <span>Personal</span>
                             <span class="text-[14px] group-open:rotate-180 transition-transform">▼</span>
                         </summary>
-                        <div class="pt-2">
+                        <div class="pt-2 pb-4 border-b border-slate-800 mb-2">
                             <div class="flex gap-1 mb-3">
                                 <input type="text" id="newStaff" class="admin-input flex-1" placeholder="+ Name">
                                 <button onclick="addStaff()" class="text-blue-500 font-black text-xl px-2">+</button>
@@ -278,7 +286,7 @@
                             <div id="staffList" class="flex flex-wrap gap-2"></div>
                         </div>
                     </details>
-                    <details open class="group">
+                    <details class="group">
                         <summary class="text-[9px] font-black text-slate-500 uppercase flex justify-between items-center mb-2 ml-1 cursor-pointer">
                             <span>Maschinen</span>
                             <span class="text-[14px] group-open:rotate-180 transition-transform">▼</span>

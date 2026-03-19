@@ -315,7 +315,7 @@
                     <label class="text-[9px] uppercase font-bold text-slate-500">Ende KW</label>
                     <input type="number" id="statsTo" class="admin-input block w-full">
                 </div>
-                <button onclick="runDeepAnalysis()" class="bg-bg-blue-600 px-6 py-2 rounded-lg font-bold text-xs uppercase hover:bg-blue-500 whitespace-nowrap">Analyse starten</button>
+                <button onclick="runDeepAnalysis()" class="bg-blue-600 px-6 py-2 rounded-lg font-bold text-xs uppercase hover:bg-blue-500 whitespace-nowrap">Analyse starten</button>
             </div>
             <div id="statsResult" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
             <button onclick="exportDeepPDF()" class="w-full mt-8 bg-emerald-600 py-4 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-emerald-500 transition-colors">Export als .PDF Report</button>
@@ -655,6 +655,24 @@
                 const swCode = `self.addEventListener('fetch', function() {});`;
                 const blob = new Blob([swCode], {type: 'application/javascript'});
                 navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(()=>{});
+            }
+
+            // NEU: Automatischer Planungsschutz & Vollbild auf Smartphones
+            if (isMobile()) {
+                isEditLocked = true;
+                updateLockButtonUI();
+                
+                // Einmaliger Event-Listener für das Auto-Vollbild beim ersten Touch
+                const enableAutoFullscreen = () => {
+                    if (!document.fullscreenElement) {
+                        const doc = document.documentElement;
+                        if (doc.requestFullscreen) doc.requestFullscreen().catch(()=>{});
+                        else if (doc.webkitRequestFullscreen) doc.webkitRequestFullscreen();
+                        else if (doc.msRequestFullscreen) doc.msRequestFullscreen();
+                    }
+                };
+                document.addEventListener('touchstart', enableAutoFullscreen, { once: true });
+                document.addEventListener('click', enableAutoFullscreen, { once: true });
             }
 
             const now = new Date();

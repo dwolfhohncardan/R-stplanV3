@@ -9,6 +9,8 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Profi-Rüstplan | KI-Deep-Analysis</title>
     
+    <link rel="manifest" href='data:application/manifest+json,{"name":"Rüstplan LIVE","short_name":"Rüstplan","display":"standalone","start_url":".","background_color":"#0f172a","theme_color":"#0f172a","icons":[{"src":"https://cdn-icons-png.flaticon.com/512/1006/1006555.png","sizes":"512x512","type":"image/png"}]}'>
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-database-compat.js"></script>
@@ -247,8 +249,9 @@
         .admin-item:hover .delete-btn { opacity: 1; }
         @media (max-width: 768px) { .delete-btn { opacity: 0.7; } }
         
-        #pwModal, #statsModal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 100; align-items: center; justify-content: center; backdrop-filter: blur(8px); padding: 1rem; }
-        #pwModal > div, #statsModal > div { max-width: 95vw; max-height: 95vh; overflow-y: auto; }
+        #pwModal, #statsModal, #confirmModal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 100; align-items: center; justify-content: center; backdrop-filter: blur(8px); padding: 1rem; }
+        #pwModal > div, #statsModal > div, #confirmModal > div { max-width: 95vw; max-height: 95vh; overflow-y: auto; }
+        #confirmModal { z-index: 150; }
         @media (max-width: 768px) { #statsModal > div { width: 100% !important; padding: 1rem; border-radius: 1rem; } #statsResult { grid-template-columns: 1fr !important; } }
         
         .today-highlight { background-color: #3b82f6 !important; color: white !important; border: 2px solid #60a5fa !important; box-shadow: 0 0 10px rgba(59,130,246,0.4); }
@@ -270,10 +273,23 @@
     </style>
 </head>
 <body>
+    <div id="toastContainer" class="fixed bottom-20 md:bottom-10 left-1/2 transform -translate-x-1/2 z-[200] flex flex-col gap-2 pointer-events-none"></div>
+
     <button class="mobile-menu-btn" onclick="toggleMobileSidebar()">☰ Menü</button>
     <button class="mobile-view-toggle" id="mobileViewToggleBtn" onclick="toggleMobileView()">⬛ Tagesansicht</button>
     <div id="dayNavBar"></div>
     <div class="mobile-overlay" id="mobileOverlay" onclick="closeMobileSidebar()"></div>
+
+    <div id="confirmModal">
+        <div class="bg-slate-800 p-8 rounded-3xl shadow-2xl w-80 border border-slate-600 text-center">
+            <h3 class="text-xl font-black mb-2 uppercase italic text-rose-500" id="confirmTitle">Löschen?</h3>
+            <p class="text-sm text-slate-300 mb-6 font-medium" id="confirmText">Eintrag wirklich entfernen?</p>
+            <div class="flex gap-4">
+                <button onclick="closeConfirm()" class="flex-1 bg-slate-700 py-3 rounded-xl font-bold text-white shadow-md">Abbruch</button>
+                <button id="confirmYesBtn" class="flex-1 bg-rose-600 hover:bg-rose-500 py-3 rounded-xl font-bold text-white shadow-md transition-colors">Löschen</button>
+            </div>
+        </div>
+    </div>
 
     <div id="pwModal">
         <div class="bg-slate-800 p-8 rounded-3xl shadow-2xl w-96 border border-slate-600 text-center">
@@ -299,7 +315,7 @@
                     <label class="text-[9px] uppercase font-bold text-slate-500">Ende KW</label>
                     <input type="number" id="statsTo" class="admin-input block w-full">
                 </div>
-                <button onclick="runDeepAnalysis()" class="bg-blue-600 px-6 py-2 rounded-lg font-bold text-xs uppercase hover:bg-blue-500 whitespace-nowrap">Analyse starten</button>
+                <button onclick="runDeepAnalysis()" class="bg-bg-blue-600 px-6 py-2 rounded-lg font-bold text-xs uppercase hover:bg-blue-500 whitespace-nowrap">Analyse starten</button>
             </div>
             <div id="statsResult" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
             <button onclick="exportDeepPDF()" class="w-full mt-8 bg-emerald-600 py-4 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-emerald-500 transition-colors">Export als .PDF Report</button>
@@ -310,9 +326,12 @@
         <aside id="sidebar">
             <div class="toggle-btn" onclick="toggleSidebar()" id="sidebarBtn">«</div>
             <div class="sidebar-content">
-                <div class="p-4 md:p-6 border-b border-slate-700 text-center flex items-center justify-between flex-shrink-0">
+                <div class="p-4 md:p-6 border-b border-slate-700 flex flex-col items-center justify-center flex-shrink-0 relative">
+                    <button class="md:hidden text-slate-400 text-2xl absolute right-4 top-4" onclick="closeMobileSidebar()">×</button>
                     <h2 class="text-white font-black text-lg md:text-xl italic uppercase tracking-tighter">Rüstplan LIVE</h2>
-                    <button class="md:hidden text-slate-400 text-2xl" onclick="closeMobileSidebar()">×</button>
+                    <div id="connectionStatus" class="mt-2 flex items-center gap-1.5 text-[10px] font-bold bg-slate-800/80 px-3 py-1 rounded-full border border-slate-600 tracking-wider text-slate-400 transition-colors">
+                        <span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse" id="connDot"></span> Offline
+                    </div>
                 </div>
                 <div class="sidebar-scroll space-y-4">
                     <details class="group">
@@ -401,6 +420,7 @@
         let staff = [], machines = [], plan = {}, currentYear, currentWeek, isEditLocked = false, globalStats = null;
         let lastRealIsoYear, lastRealIsoWeek;
         let dragSrc = null;
+        let confirmAction = null; // Für das Delete-Modal
 
         let mobileViewActive = false;
         let activeDayIndex = 0;
@@ -410,28 +430,61 @@
 
         function isMobile() { return window.innerWidth <= 768; }
 
-        // Vollbild-Funktion
+        // --- Toasts & Modals ---
+        function showToast(msg, type = 'error') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            const color = type === 'success' ? 'bg-emerald-600' : 'bg-rose-600';
+            toast.className = `${color} text-white px-5 py-3 rounded-2xl font-bold text-xs uppercase tracking-wider shadow-2xl transition-all duration-300 transform translate-y-10 opacity-0 pointer-events-auto flex items-center gap-2 border border-white/20`;
+            toast.innerHTML = type === 'success' ? `✅ ${msg}` : `❌ ${msg}`;
+            container.appendChild(toast);
+            
+            setTimeout(() => { toast.classList.remove('translate-y-10', 'opacity-0'); }, 10);
+            setTimeout(() => { 
+                toast.classList.add('translate-y-10', 'opacity-0'); 
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function askConfirm(title, text, actionFn) {
+            document.getElementById('confirmTitle').innerText = title;
+            document.getElementById('confirmText').innerText = text;
+            confirmAction = actionFn;
+            document.getElementById('confirmModal').style.display = 'flex';
+        }
+
+        function closeConfirm() {
+            document.getElementById('confirmModal').style.display = 'none';
+            confirmAction = null;
+        }
+
+        document.getElementById('confirmYesBtn').onclick = () => {
+            if (confirmAction) confirmAction();
+            closeConfirm();
+            showToast('Eintrag gelöscht', 'success');
+        };
+
+        // --- Vollbild-Funktion ---
         function toggleFullscreen() {
             if (!document.fullscreenElement) {
                 if (document.documentElement.requestFullscreen) {
                     document.documentElement.requestFullscreen();
-                } else if (document.documentElement.webkitRequestFullscreen) { /* Safari */
+                } else if (document.documentElement.webkitRequestFullscreen) {
                     document.documentElement.webkitRequestFullscreen();
-                } else if (document.documentElement.msRequestFullscreen) { /* IE11 */
+                } else if (document.documentElement.msRequestFullscreen) {
                     document.documentElement.msRequestFullscreen();
                 }
             } else {
                 if (document.exitFullscreen) {
                     document.exitFullscreen();
-                } else if (document.webkitExitFullscreen) { /* Safari */
+                } else if (document.webkitExitFullscreen) {
                     document.webkitExitFullscreen();
-                } else if (document.msExitFullscreen) { /* IE11 */
+                } else if (document.msExitFullscreen) {
                     document.msExitFullscreen();
                 }
             }
         }
 
-        // Vollbild-Button Text anpassen
         document.addEventListener('fullscreenchange', () => {
             const btn = document.getElementById('fullscreenBtn');
             if (document.fullscreenElement) {
@@ -441,14 +494,12 @@
             }
         });
 
-        // Gibt die ISO KW zurück
         function getWeek(d) { 
             d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())); 
             d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay()||7)); 
             return Math.ceil((((d - new Date(Date.UTC(d.getUTCFullYear(),0,1))) / 86400000) + 1)/7); 
         }
 
-        // Hilfsfunktion, um korrekte Kombination aus ISO-Jahr und ISO-Woche zu erhalten
         function getIsoYearAndWeek(d) {
             const temp = new Date(d.getTime());
             temp.setDate(temp.getDate() + 4 - (temp.getDay() || 7));
@@ -599,6 +650,13 @@
         }
 
         function initApp() {
+            // PWA Dummy Service Worker Registrierung (Verhindert Browser-Warnungen & macht App "installierbar")
+            if ('serviceWorker' in navigator) {
+                const swCode = `self.addEventListener('fetch', function() {});`;
+                const blob = new Blob([swCode], {type: 'application/javascript'});
+                navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(()=>{});
+            }
+
             const now = new Date();
             const iso = getIsoYearAndWeek(now);
             currentYear = iso.year;
@@ -609,6 +667,21 @@
             document.getElementById('statsFrom').value = currentWeek;
             document.getElementById('statsTo').value = currentWeek;
             listenToDatabase();
+            
+            // Firebase Live-Connection Status Listener
+            db.ref('.info/connected').on('value', function(snap) {
+                const statusEl = document.getElementById('connectionStatus');
+                const dotEl = document.getElementById('connDot');
+                if (snap.val() === true) {
+                    statusEl.classList.replace('text-slate-400', 'text-emerald-400');
+                    dotEl.classList.replace('bg-rose-500', 'bg-emerald-500');
+                    statusEl.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" id="connDot"></span> Live`;
+                } else {
+                    statusEl.classList.replace('text-emerald-400', 'text-slate-400');
+                    dotEl.classList.replace('bg-emerald-500', 'bg-rose-500');
+                    statusEl.innerHTML = `<span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse" id="connDot"></span> Offline`;
+                }
+            });
 
             window.lastRenderedToday = new Date().toDateString();
 
@@ -717,13 +790,23 @@
 
         function handleLockButton() {
             if (isEditLocked) { document.getElementById('pwModal').style.display = 'flex'; document.getElementById('pwInput').focus(); }
-            else { isEditLocked = true; updateLockButtonUI(); render(); }
+            else { isEditLocked = true; updateLockButtonUI(); render(); showToast('Schutz aktiviert', 'success'); }
         }
+        
         function checkPassword() {
-            if (document.getElementById('pwInput').value === "Gelenkwelle") { isEditLocked = false; updateLockButtonUI(); closeModal(); render(); }
-            else { alert("Falsch!"); }
+            if (document.getElementById('pwInput').value === "Gelenkwelle") { 
+                isEditLocked = false; 
+                updateLockButtonUI(); 
+                closeModal(); 
+                render(); 
+                showToast('Schutz aufgehoben', 'success');
+            } else { 
+                showToast('Falsches Passwort!', 'error'); 
+            }
         }
+        
         function closeModal() { document.getElementById('pwModal').style.display = 'none'; document.getElementById('pwInput').value = ''; }
+        
         function updateLockButtonUI() {
             const btn = document.getElementById('lockBtn');
             btn.innerText = isEditLocked ? "🔒 Zu" : "🔓 Auf";
@@ -892,10 +975,27 @@
         }
 
         function toggleNoteInput(k, i) { if (plan[k][i].note === undefined) plan[k][i].note = ""; plan[k][i].showNote = !plan[k][i].showNote; save(); }
-        function addStaff() { const v = document.getElementById('newStaff').value.trim(); if(v){ staff.push(v); save(); document.getElementById('newStaff').value=''; } }
-        function addMachine() { const v = document.getElementById('newMachine').value.trim(); if(v){ machines.push(v); save(); document.getElementById('newMachine').value=''; } }
-        function renderStaff() { document.getElementById('staffList').innerHTML = staff.map(n => `<div class="admin-item bg-slate-800 px-2 py-1 rounded text-[10px] flex items-center gap-2">${n}<span onclick="staff=staff.filter(s=>s!=='${n}');save();" class="delete-btn">×</span></div>`).join(''); }
-        function renderPool() { document.getElementById('pool').innerHTML = machines.map(m => `<div draggable="true" ondragstart="dragSrc=null; event.dataTransfer.setData('text', '${m}')" class="admin-item bg-slate-800 p-2 rounded text-[9px] flex justify-between items-center cursor-move"><span>⚙️ ${m}</span><span onclick="machines=machines.filter(x=>x!=='${m}');save();" class="delete-btn">×</span></div>`).join(''); }
+        
+        function addStaff() { const v = document.getElementById('newStaff').value.trim(); if(v){ staff.push(v); save(); document.getElementById('newStaff').value=''; showToast('Personal hinzugefügt', 'success');} }
+        function addMachine() { const v = document.getElementById('newMachine').value.trim(); if(v){ machines.push(v); save(); document.getElementById('newMachine').value=''; showToast('Maschine hinzugefügt', 'success');} }
+        
+        function renderStaff() { 
+            document.getElementById('staffList').innerHTML = staff.map(n => `
+                <div class="admin-item bg-slate-800 px-2 py-1 rounded text-[10px] flex items-center gap-2">
+                    ${n}
+                    <span onclick="askConfirm('Personal löschen', '${n} wirklich entfernen?', () => { staff=staff.filter(s=>s!=='${n}'); save(); })" class="delete-btn">×</span>
+                </div>
+            `).join(''); 
+        }
+        
+        function renderPool() { 
+            document.getElementById('pool').innerHTML = machines.map(m => `
+                <div draggable="true" ondragstart="dragSrc=null; event.dataTransfer.setData('text', '${m}')" class="admin-item bg-slate-800 p-2 rounded text-[9px] flex justify-between items-center cursor-move">
+                    <span>⚙️ ${m}</span>
+                    <span onclick="askConfirm('Maschine löschen', '${m} wirklich entfernen?', () => { machines=machines.filter(x=>x!=='${m}'); save(); })" class="delete-btn">×</span>
+                </div>
+            `).join(''); 
+        }
         
         window.onload = initApp;
     </script>

@@ -8,32 +8,38 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Profi-Rüstplan | KI-Deep-Analysis</title>
-    
+
     <link rel="manifest" href='data:application/manifest+json,{"name":"Rüstplan LIVE","short_name":"Rüstplan","display":"standalone","start_url":".","background_color":"#0f172a","theme_color":"#0f172a","icons":[{"src":"https://cdn-icons-png.flaticon.com/512/1006/1006555.png","sizes":"512x512","type":"image/png"}]}'>
-    
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-database-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
-    
     <script src="https://bernardo-castilho.github.io/DragDropTouch/DragDropTouch.js"></script>
 
     <style>
-        :root { --bg-main: #0f172a; --bg-sidebar: #1e293b; --accent: #3b82f6; }
-
-        * { box-sizing: border-box; }
-
+        :root { 
+            --bg-main: #0f172a; 
+            --bg-sidebar: #1e293b; 
+            --accent: #3b82f6; 
+        }
+        
+        * { 
+            box-sizing: border-box; 
+        }
+        
         html, body {
             background-color: var(--bg-main);
             color: #f1f5f9;
-            margin: 0; padding: 0;
+            margin: 0; 
+            padding: 0;
             font-family: ui-sans-serif, system-ui, sans-serif;
             height: 100%;
             width: 100%;
             overflow: hidden;
             touch-action: pan-y pan-x pinch-zoom;
-            overscroll-behavior-y: none; /* Verhindert Pull-to-Refresh in Android Chrome */
+            overscroll-behavior-y: none;
         }
 
         .app-container {
@@ -42,7 +48,7 @@
             width: 100vw;
             overflow: hidden;
         }
-        
+
         aside { 
             width: 320px;
             background-color: var(--bg-sidebar);
@@ -55,6 +61,7 @@
             z-index: 50;
             overflow: hidden;
         }
+        
         aside.collapsed { width: 50px; }
         aside.collapsed .sidebar-content { display: none; }
 
@@ -75,15 +82,26 @@
         }
 
         .toggle-btn {
-            position: absolute; right: 10px; top: 15px;
-            cursor: pointer; background: #334155; color: white;
-            padding: 2px 8px; border-radius: 4px; font-weight: bold; z-index: 10;
+            position: absolute; 
+            right: 10px; 
+            top: 15px;
+            cursor: pointer; 
+            background: #334155; 
+            color: white;
+            padding: 2px 8px; 
+            border-radius: 4px; 
+            font-weight: bold; 
+            z-index: 10;
         }
-        
+
         @media (max-width: 768px) {
             aside {
-                position: fixed; left: 0; top: 0; height: 100vh;
-                width: 280px; transform: translateX(-100%);
+                position: fixed; 
+                left: 0; 
+                top: 0; 
+                height: 100vh;
+                width: 280px; 
+                transform: translateX(-100%);
             }
             aside.mobile-open { transform: translateX(0); }
             aside.collapsed { width: 280px; transform: translateX(-100%); }
@@ -91,18 +109,30 @@
             aside.collapsed .sidebar-content { display: flex; flex-direction: column; flex: 1; }
             .toggle-btn { display: none; }
             .mobile-overlay {
-                display: none; position: fixed; inset: 0;
-                background: rgba(0,0,0,0.5); z-index: 40;
+                display: none; 
+                position: fixed; 
+                inset: 0;
+                background: rgba(0,0,0,0.5); 
+                z-index: 40;
             }
             .mobile-overlay.active { display: block; }
         }
-        
+
         .mobile-menu-btn {
-            display: none; position: fixed; top: 10px; left: 10px;
-            z-index: 30; background: #334155; color: white;
-            padding: 8px 12px; border-radius: 8px; font-weight: bold;
-            cursor: pointer; border: none;
+            display: none; 
+            position: fixed; 
+            top: 10px; 
+            left: 10px;
+            z-index: 30; 
+            background: #334155; 
+            color: white;
+            padding: 8px 12px; 
+            border-radius: 8px; 
+            font-weight: bold;
+            cursor: pointer; 
+            border: none;
         }
+        
         @media (max-width: 768px) { .mobile-menu-btn { display: block; } }
 
         .mobile-view-toggle {
@@ -212,6 +242,7 @@
             color: #94a3b8;
             transition: all 0.15s;
         }
+        
         .day-nav-btn.active { background: #1d4ed8; color: white; border-color: #3b82f6; }
         .day-nav-btn.today { border-color: #3b82f6; color: #60a5fa; }
 
@@ -219,10 +250,13 @@
         .status-umbau { background-color: #1e3a8a; border-left: 4px solid #3b82f6; color: #dbeafe; }
         .status-erledigt { background-color: #064e3b; border-left: 4px solid #10b981; color: #d1fae5; }
         .status-stoerung { 
-            background-color: #7f1d1d; border: 2px solid #ef4444 !important; color: #fee2e2; 
+            background-color: #7f1d1d; 
+            border: 2px solid #ef4444 !important; 
+            color: #fee2e2; 
             box-shadow: 0 0 8px 2px rgba(239,68,68,0.6), 0 0 18px 4px rgba(239,68,68,0.3);
             animation: stoerung-pulse 1.6s ease-in-out infinite;
         }
+
         @keyframes stoerung-pulse {
             0%   { box-shadow: 0 0 6px 2px rgba(239,68,68,0.5), 0 0 14px 4px rgba(239,68,68,0.2); }
             50%  { box-shadow: 0 0 14px 5px rgba(239,68,68,0.85), 0 0 28px 8px rgba(239,68,68,0.4); }
@@ -230,42 +264,125 @@
         }
 
         .machine-badge { 
-            min-height: 38px; margin-bottom: 6px; display: flex; flex-direction: row; align-items: center; 
-            gap: 4px; padding: 4px 6px; border-radius: 6px; font-weight: 700; font-size: 11px; 
-            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3); width: 100%; flex-wrap: wrap;
-            cursor: grab; transition: opacity 0.2s, transform 0.15s;
+            min-height: 38px; 
+            margin-bottom: 6px; 
+            display: flex; 
+            flex-direction: row; 
+            align-items: center; 
+            gap: 4px; 
+            padding: 4px 6px; 
+            border-radius: 6px; 
+            font-weight: 700; 
+            font-size: 11px; 
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3); 
+            width: 100%; 
+            flex-wrap: wrap;
+            cursor: grab; 
+            transition: opacity 0.2s, transform 0.15s;
         }
+        
         .machine-badge:active { cursor: grabbing; }
         .machine-badge.dragging { opacity: 0.4; transform: scale(0.97); }
+        
         @media (max-width: 480px) { .machine-badge { font-size: 10px; padding: 3px 5px; min-height: 34px; } }
         
-        .staff-header { font-size: 11px; font-weight: 900; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+        .staff-header { 
+            font-size: 11px; 
+            font-weight: 900; 
+            color: #94a3b8; 
+            text-transform: uppercase; 
+            letter-spacing: 0.05em; 
+            margin-bottom: 6px; 
+        }
+        
         @media (max-width: 480px) { .staff-header { font-size: 10px; } }
         
         #pool { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-        .note-area-inline { background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; color: white; font-size: 9px; padding: 2px 4px; height: 22px; flex-grow: 1; outline: none; resize: none; overflow: hidden; white-space: nowrap; min-width: 50px; }
-        .admin-input { background: #0f172a; border: 1px solid #334155; border-radius: 6px; padding: 4px 8px; font-size: 11px; color: white; width: 100%; outline: none; }
+        
+        .note-area-inline { 
+            background: rgba(0,0,0,0.25); 
+            border: 1px solid rgba(255,255,255,0.1); 
+            border-radius: 4px; 
+            color: white; 
+            font-size: 9px; 
+            padding: 2px 4px; 
+            height: 22px; 
+            flex-grow: 1; 
+            outline: none; 
+            resize: none; 
+            overflow: hidden; 
+            white-space: nowrap; 
+            min-width: 50px; 
+        }
+        
+        .admin-input { 
+            background: #0f172a; 
+            border: 1px solid #334155; 
+            border-radius: 6px; 
+            padding: 4px 8px; 
+            font-size: 11px; 
+            color: white; 
+            width: 100%; 
+            outline: none; 
+        }
+        
         .delete-btn { opacity: 0; transition: opacity 0.2s; color: #ef4444; font-size: 14px; cursor: pointer; }
         .admin-item:hover .delete-btn { opacity: 1; }
+        
         @media (max-width: 768px) { .delete-btn { opacity: 0.7; } }
         
-        #pwModal, #statsModal, #confirmModal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 100; align-items: center; justify-content: center; backdrop-filter: blur(8px); padding: 1rem; }
+        #pwModal, #statsModal, #confirmModal, #loginModal, #adminUserModal { 
+            display: none; 
+            position: fixed; 
+            inset: 0; 
+            background: rgba(0,0,0,0.9); 
+            z-index: 100; 
+            align-items: center; 
+            justify-content: center; 
+            backdrop-filter: blur(8px); 
+            padding: 1rem; 
+        }
+        
+        #loginModal { z-index: 300; }
+        #adminUserModal { z-index: 250; }
         #pwModal > div, #statsModal > div, #confirmModal > div { max-width: 95vw; max-height: 95vh; overflow-y: auto; }
         #confirmModal { z-index: 150; }
-        @media (max-width: 768px) { #statsModal > div { width: 100% !important; padding: 1rem; border-radius: 1rem; } #statsResult { grid-template-columns: 1fr !important; } }
         
-        .today-highlight { background-color: #3b82f6 !important; color: white !important; border: 2px solid #60a5fa !important; box-shadow: 0 0 10px rgba(59,130,246,0.4); }
+        @media (max-width: 768px) { 
+            #statsModal > div { width: 100% !important; padding: 1rem; border-radius: 1rem; } 
+            #statsResult { grid-template-columns: 1fr !important; } 
+        }
+        
+        .today-highlight { 
+            background-color: #3b82f6 !important; 
+            color: white !important; 
+            border: 2px solid #60a5fa !important; 
+            box-shadow: 0 0 10px rgba(59,130,246,0.4); 
+        }
+        
         .day-column { min-width: 0; }
         @media (max-width: 768px) { .day-column { min-width: 140px; } }
 
-        .drop-target { outline: 2px dashed #3b82f6; outline-offset: 2px; background-color: rgba(59,130,246,0.08) !important; }
+        .drop-target { 
+            outline: 2px dashed #3b82f6; 
+            outline-offset: 2px; 
+            background-color: rgba(59,130,246,0.08) !important; 
+        }
 
         /* Day header with date */
         .day-header {
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            padding: 6px 4px; border-radius: 8px; border: 1px solid #334155;
-            background: #1e293b; gap: 1px; margin-bottom: 4px;
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center;
+            padding: 6px 4px; 
+            border-radius: 8px; 
+            border: 1px solid #334155;
+            background: #1e293b; 
+            gap: 1px; 
+            margin-bottom: 4px;
         }
+        
         .day-header.today-highlight { background: #3b82f6 !important; border-color: #60a5fa !important; }
         .day-header-name { font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.85; }
         .day-header-date { font-size: 15px; font-weight: 900; letter-spacing: 0.01em; line-height: 1; }
@@ -273,12 +390,33 @@
     </style>
 </head>
 <body>
-    <div id="toastContainer" class="fixed bottom-20 md:bottom-10 left-1/2 transform -translate-x-1/2 z-[200] flex flex-col gap-2 pointer-events-none"></div>
+    <div id="toastContainer" class="fixed bottom-20 md:bottom-10 left-1/2 transform -translate-x-1/2 z-[400] flex flex-col gap-2 pointer-events-none"></div>
 
     <button class="mobile-menu-btn" onclick="toggleMobileSidebar()">☰ Menü</button>
     <button class="mobile-view-toggle" id="mobileViewToggleBtn" onclick="toggleMobileView()">⬛ Tagesansicht</button>
     <div id="dayNavBar"></div>
     <div class="mobile-overlay" id="mobileOverlay" onclick="closeMobileSidebar()"></div>
+
+    <div id="loginModal">
+        <div class="bg-slate-800 p-8 rounded-3xl shadow-2xl w-96 border border-slate-600 text-center flex flex-col items-center">
+            <h3 class="text-2xl font-black mb-2 uppercase italic text-blue-500">Login</h3>
+            <p class="text-[10px] text-slate-400 mb-6 font-bold uppercase">Bitte anmelden um fortzufahren</p>
+            <select id="loginUser" class="w-full bg-slate-900 border-2 border-slate-700 rounded-xl p-3 mb-4 outline-none focus:border-blue-500 text-white font-bold appearance-none text-center">
+                <option value="">Lade Benutzer...</option>
+            </select>
+            <input type="password" id="loginPw" class="w-full bg-slate-900 border-2 border-slate-700 rounded-xl p-3 mb-6 outline-none focus:border-blue-500 text-white text-center font-bold" placeholder="Passwort eingeben...">
+            <button onclick="doLogin()" class="w-full bg-blue-600 hover:bg-blue-500 py-3 rounded-xl font-black text-white shadow-md uppercase tracking-widest transition-colors">Einloggen</button>
+        </div>
+    </div>
+
+    <div id="adminUserModal">
+        <div class="bg-slate-800 p-6 rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col border border-slate-600 relative">
+            <button onclick="closeAdminModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-2xl font-bold">×</button>
+            <h3 class="text-xl font-black mb-4 uppercase italic text-rose-500 text-center">Benutzer & Rechte</h3>
+            <div id="adminUserList" class="flex flex-col gap-2 overflow-y-auto flex-1 pr-2"></div>
+            <button onclick="saveUsersFromAdmin()" class="mt-6 w-full bg-emerald-600 hover:bg-emerald-500 py-3 rounded-xl font-black uppercase tracking-widest text-white shadow-md transition-colors">Speichern</button>
+        </div>
+    </div>
 
     <div id="confirmModal">
         <div class="bg-slate-800 p-8 rounded-3xl shadow-2xl w-80 border border-slate-600 text-center">
@@ -294,7 +432,7 @@
     <div id="pwModal">
         <div class="bg-slate-800 p-8 rounded-3xl shadow-2xl w-96 border border-slate-600 text-center">
             <h3 class="text-xl font-black mb-6 uppercase italic">Berechtigung prüfen</h3>
-            <input type="password" id="pwInput" class="w-full bg-slate-900 border-2 border-slate-700 rounded-xl p-3 mb-6 outline-none focus:border-blue-500 text-white text-center" placeholder="Passwort...">
+            <input type="password" id="pwInput" class="w-full bg-slate-900 border-2 border-slate-700 rounded-xl p-3 mb-6 outline-none focus:border-blue-500 text-white text-center" placeholder="Persönliches Passwort...">
             <div class="flex gap-4">
                 <button onclick="closeModal()" class="flex-1 bg-slate-700 py-3 rounded-xl font-bold">Abbruch</button>
                 <button onclick="checkPassword()" class="flex-1 bg-blue-600 py-3 rounded-xl font-bold">OK</button>
@@ -332,16 +470,18 @@
                     <div id="connectionStatus" class="mt-2 flex items-center gap-1.5 text-[10px] font-bold bg-slate-800/80 px-3 py-1 rounded-full border border-slate-600 tracking-wider text-slate-400 transition-colors">
                         <span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse" id="connDot"></span> Offline
                     </div>
+                    <div id="logoutBtnContainer" class="mt-2 w-full text-center"></div>
                 </div>
                 <div class="sidebar-scroll space-y-4">
-                    <details class="group">
+                    <details class="group" open>
                         <summary class="text-[9px] font-black text-slate-500 uppercase flex justify-between items-center mb-2 ml-1 cursor-pointer">
                             <span>KI & System</span>
                             <span class="text-[14px] group-open:rotate-180 transition-transform">▼</span>
                         </summary>
                         <div class="space-y-4 pt-2 pb-4 border-b border-slate-800 mb-2">
                             <button id="fullscreenBtn" onclick="toggleFullscreen()" class="w-full bg-slate-800 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-md border border-slate-600 hover:bg-slate-700 transition">⛶ Vollbild aktivieren</button>
-                            <button onclick="openStats()" class="w-full bg-gradient-to-br from-indigo-600 to-blue-700 py-3 rounded-xl font-black uppercase italic tracking-tighter shadow-xl">🤖 KI Statistik</button>
+                            <button onclick="if(canEditMaster()) { openStats() } else { showToast('Keine Berechtigung (nur Admin/Planer)', 'error') }" class="w-full bg-gradient-to-br from-indigo-600 to-blue-700 py-3 rounded-xl font-black uppercase italic tracking-tighter shadow-xl">🤖 KI Statistik</button>
+                            <button id="adminMenuBtn" onclick="openAdminModal()" class="w-full bg-rose-600/20 text-rose-400 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest border border-rose-500/30 hover:bg-rose-600/40 transition hidden">⚙️ Admin Bereich</button>
                             <div class="bg-slate-800 p-4 rounded-2xl border border-slate-600 text-center">
                                 <span class="text-[9px] font-black uppercase text-slate-500 block mb-2">Planungsschutz</span>
                                 <button id="lockBtn" onclick="handleLockButton()" class="w-full py-2 rounded-xl font-black text-[10px] uppercase bg-emerald-600 text-white shadow-lg">🔓 Aktiv</button>
@@ -417,18 +557,110 @@
         const customStaffColors = { "Lange": "#22c55e", "Saric": "#3b82f6", "Oks": "#ffffff", "Ederle": "#f97316" };
         const defaultPalette = ["#8b5cf6", "#ec4899", "#06b6d4", "#f59e0b", "#14b8a6"];
         
-        let staff = [], machines = [], plan = {}, currentYear, currentWeek, isEditLocked = false, globalStats = null;
-        let lastRealIsoYear, lastRealIsoWeek;
+        let staff = [];
+        let machines = [];
+        let plan = {};
+        let users = {};
+        let currentYear;
+        let currentWeek;
+        let isEditLocked = false;
+        let globalStats = null;
+        let lastRealIsoYear;
+        let lastRealIsoWeek;
         let dragSrc = null;
-        let confirmAction = null; // Für das Delete-Modal
-
+        let confirmAction = null; 
         let mobileViewActive = false;
         let activeDayIndex = 0;
         let touchStartX = 0;
         let touchStartY = 0;
         let isSwiping = false;
+        let currentUser = null;
 
-        function isMobile() { return window.innerWidth <= 768; }
+        function isMobile() { 
+            return window.innerWidth <= 768; 
+        }
+
+        // --- Rechte-System ---
+        function canEditMaster() {
+            return currentUser && (currentUser.role === 'Admin' || currentUser.role === 'Fertigungsplaner');
+        }
+
+        function canEditStatus() {
+            return currentUser && (currentUser.role === 'Admin' || currentUser.role === 'Fertigungsplaner' || currentUser.role === 'Vorarbeiter');
+        }
+
+        function updateAdminUIVisibility() {
+            const btn = document.getElementById('adminMenuBtn');
+            if (btn) btn.style.display = canEditMaster() ? 'block' : 'none';
+            document.getElementById('logoutBtnContainer').innerHTML = currentUser ? `
+                <button onclick="doLogout()" class="mt-2 text-[10px] bg-slate-700 px-3 py-1 rounded-full text-white font-bold hover:bg-rose-600 transition tracking-widest uppercase">
+                    Logout (${currentUser.name})
+                </button>` : '';
+        }
+
+        // --- Login & Admin Logik ---
+        function populateLoginUsers() {
+            const select = document.getElementById('loginUser');
+            select.innerHTML = Object.keys(users).map(u => `<option value="${u}">${u}</option>`).join('');
+        }
+
+        function doLogin() {
+            const user = document.getElementById('loginUser').value;
+            const pw = document.getElementById('loginPw').value;
+            if (users[user] && users[user].password === pw) {
+                currentUser = { name: user, role: users[user].role };
+                document.getElementById('loginModal').style.display = 'none';
+                sessionStorage.setItem('loggedInUser', JSON.stringify(currentUser));
+                updateAdminUIVisibility();
+                render();
+                showToast(`Willkommen, ${user} (${currentUser.role})`, 'success');
+            } else {
+                showToast('Falsches Passwort', 'error');
+            }
+        }
+
+        function doLogout() {
+            currentUser = null;
+            sessionStorage.removeItem('loggedInUser');
+            document.getElementById('loginPw').value = '';
+            document.getElementById('loginModal').style.display = 'flex';
+            updateAdminUIVisibility();
+            render();
+        }
+
+        function openAdminModal() {
+            if (!canEditMaster()) return showToast('Nur Admin / Planer!', 'error');
+            closeMobileSidebar();
+            const list = document.getElementById('adminUserList');
+            list.innerHTML = Object.keys(users).map(name => `
+                <div class="flex flex-col md:flex-row gap-2 bg-slate-900 p-3 rounded-xl border border-slate-700 items-center">
+                    <div class="flex-1 text-white font-bold w-full md:w-auto">${name}</div>
+                    <select id="role-${name}" class="admin-input flex-1 w-full md:w-auto">
+                        <option value="Mitarbeiter" ${users[name].role === 'Mitarbeiter' ? 'selected' : ''}>Mitarbeiter</option>
+                        <option value="Vorarbeiter" ${users[name].role === 'Vorarbeiter' ? 'selected' : ''}>Vorarbeiter</option>
+                        <option value="Fertigungsplaner" ${users[name].role === 'Fertigungsplaner' ? 'selected' : ''}>Fertigungsplaner</option>
+                        <option value="Admin" ${users[name].role === 'Admin' ? 'selected' : ''}>Admin</option>
+                    </select>
+                    <input type="text" id="pw-${name}" value="${users[name].password}" class="admin-input flex-1 w-full md:w-auto" placeholder="Passwort">
+                </div>
+            `).join('');
+            document.getElementById('adminUserModal').style.display = 'flex';
+        }
+
+        function saveUsersFromAdmin() {
+            Object.keys(users).forEach(name => {
+                const role = document.getElementById(`role-${name}`).value;
+                const pw = document.getElementById(`pw-${name}`).value;
+                users[name] = { role, password: pw };
+            });
+            save();
+            closeAdminModal();
+            showToast('Benutzer gespeichert', 'success');
+        }
+
+        function closeAdminModal() { 
+            document.getElementById('adminUserModal').style.display = 'none'; 
+        }
 
         // --- Toasts & Modals ---
         function showToast(msg, type = 'error') {
@@ -441,7 +673,7 @@
             
             setTimeout(() => { toast.classList.remove('translate-y-10', 'opacity-0'); }, 10);
             setTimeout(() => { 
-                toast.classList.add('translate-y-10', 'opacity-0'); 
+                toast.classList.add('translate-y-10', 'opacity-0');
                 setTimeout(() => toast.remove(), 300);
             }, 3000);
         }
@@ -556,16 +788,19 @@
         function renderDayNav() {
             const nav = document.getElementById('dayNavBar');
             if (!mobileViewActive) { nav.innerHTML = ''; return; }
+            
             const tName = new Intl.DateTimeFormat('de-DE', { weekday: 'long' }).format(new Date());
             const realIso = getIsoYearAndWeek(new Date());
             const isAW = (currentWeek === realIso.week && currentYear === realIso.year);
+            
             nav.innerHTML = days.map((d, i) => {
                 const isToday = isAW && d === tName;
                 const isActive = i === activeDayIndex;
                 const date = getDayDate(i);
                 const dd = date.getDate().toString().padStart(2, '0');
                 const mm = (date.getMonth() + 1).toString().padStart(2, '0');
-                return `<button class="day-nav-btn ${isActive ? 'active' : ''} ${isToday ? 'today' : ''}" onclick="setActiveDay(${i})">
+                return `
+                <button class="day-nav-btn ${isActive ? 'active' : ''} ${isToday ? 'today' : ''}" onclick="setActiveDay(${i})">
                     <div>${dayShort[i]}</div>
                     <div style="font-size:9px;opacity:0.8">${dd}.${mm}</div>
                 </button>`;
@@ -636,12 +871,14 @@
             sb.classList.toggle('collapsed');
             btn.innerText = sb.classList.contains('collapsed') ? '»' : '«';
         }
+        
         function toggleMobileSidebar() {
             const sb = document.getElementById('sidebar');
             const overlay = document.getElementById('mobileOverlay');
             sb.classList.toggle('mobile-open');
             overlay.classList.toggle('active');
         }
+        
         function closeMobileSidebar() {
             const sb = document.getElementById('sidebar');
             const overlay = document.getElementById('mobileOverlay');
@@ -650,19 +887,16 @@
         }
 
         function initApp() {
-            // PWA Dummy Service Worker Registrierung (Verhindert Browser-Warnungen & macht App "installierbar")
             if ('serviceWorker' in navigator) {
                 const swCode = `self.addEventListener('fetch', function() {});`;
                 const blob = new Blob([swCode], {type: 'application/javascript'});
                 navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(()=>{});
             }
 
-            // NEU: Automatischer Planungsschutz & Vollbild auf Smartphones
             if (isMobile()) {
                 isEditLocked = true;
                 updateLockButtonUI();
                 
-                // Einmaliger Event-Listener für das Auto-Vollbild beim ersten Touch
                 const enableAutoFullscreen = () => {
                     if (!document.fullscreenElement) {
                         const doc = document.documentElement;
@@ -673,6 +907,18 @@
                 };
                 document.addEventListener('touchstart', enableAutoFullscreen, { once: true });
                 document.addEventListener('click', enableAutoFullscreen, { once: true });
+            }
+
+            const savedUser = sessionStorage.getItem('loggedInUser');
+            if (savedUser) {
+                try { 
+                    currentUser = JSON.parse(savedUser); 
+                } catch(e){}
+            }
+
+            // SOFORTIGES ANZEIGEN DES LOGINS FALLS NICHT EINGELOGGT
+            if (!currentUser) {
+                document.getElementById('loginModal').style.display = 'flex';
             }
 
             const now = new Date();
@@ -686,7 +932,6 @@
             document.getElementById('statsTo').value = currentWeek;
             listenToDatabase();
             
-            // Firebase Live-Connection Status Listener
             db.ref('.info/connected').on('value', function(snap) {
                 const statusEl = document.getElementById('connectionStatus');
                 const dotEl = document.getElementById('connDot');
@@ -725,35 +970,63 @@
             }, 60000); 
         }
 
-        function openStats() { closeMobileSidebar(); document.getElementById('statsModal').style.display = 'flex'; runDeepAnalysis(); }
-        function closeStats() { document.getElementById('statsModal').style.display = 'none'; }
+        function openStats() { 
+            closeMobileSidebar(); 
+            document.getElementById('statsModal').style.display = 'flex'; 
+            runDeepAnalysis(); 
+        }
+        
+        function closeStats() { 
+            document.getElementById('statsModal').style.display = 'none'; 
+        }
 
         async function runDeepAnalysis() {
             const from = parseInt(document.getElementById('statsFrom').value);
             const to = parseInt(document.getElementById('statsTo').value);
             const resultDiv = document.getElementById('statsResult');
             resultDiv.innerHTML = '<div class="col-span-2 text-blue-400 animate-pulse text-center py-20 font-black uppercase tracking-widest">KI berechnet Statistiken...</div>';
+            
             const snapshot = await db.ref('rustplan_root').once('value');
             const data = snapshot.val() || {};
-            let stats = { staffCounts: {}, machineRuest: {}, machineStoerung: {}, stoerungenProWoche: {}, totalRuest: 0, totalStoerung: 0, details: [] };
+            let stats = { 
+                staffCounts: {}, 
+                machineRuest: {}, 
+                machineStoerung: {}, 
+                stoerungenProWoche: {}, 
+                totalRuest: 0, 
+                totalStoerung: 0, 
+                details: [] 
+            };
+            
             for (let w = from; w <= to; w++) {
                 const weekKey = `plan-${currentYear}-W${w}`;
                 const weekData = data[weekKey] || {};
                 stats.stoerungenProWoche[w] = 0;
+                
                 Object.keys(weekData).forEach(slotKey => {
                     const [day, person] = slotKey.split('-');
                     weekData[slotKey].forEach(m => {
                         stats.totalRuest++;
                         stats.machineRuest[m.name] = (stats.machineRuest[m.name] || 0) + 1;
                         stats.staffCounts[person] = (stats.staffCounts[person] || 0) + 1;
-                        if (m.status === 'stoerung') { stats.totalStoerung++; stats.machineStoerung[m.name] = (stats.machineStoerung[m.name] || 0) + 1; stats.stoerungenProWoche[w]++; }
+                        if (m.status === 'stoerung') { 
+                            stats.totalStoerung++; 
+                            stats.machineStoerung[m.name] = (stats.machineStoerung[m.name] || 0) + 1; 
+                            stats.stoerungenProWoche[w]++; 
+                        }
                         stats.details.push({ kw: w, tag: day, name: person, maschine: m.name, status: m.status });
                     });
                 });
             }
+            
             const mid = Math.floor((from + to) / 2);
             let firstHalfS = 0, secondHalfS = 0;
-            Object.keys(stats.stoerungenProWoche).forEach(w => { if (parseInt(w) <= mid) firstHalfS += stats.stoerungenProWoche[w]; else secondHalfS += stats.stoerungenProWoche[w]; });
+            
+            Object.keys(stats.stoerungenProWoche).forEach(w => { 
+                if (parseInt(w) <= mid) firstHalfS += stats.stoerungenProWoche[w]; 
+                else secondHalfS += stats.stoerungenProWoche[w]; 
+            });
+            
             const trend = secondHalfS > firstHalfS ? "Steigend 📈" : (secondHalfS < firstHalfS ? "Sinkend 📉" : "Stabil ➡️");
             globalStats = { ...stats, trend };
             renderDeepStatsHTML(globalStats);
@@ -763,6 +1036,7 @@
             const bestStaff = Object.entries(s.staffCounts).sort((a,b) => b[1]-a[1])[0] || ["-", 0];
             const mostRuestMachine = Object.entries(s.machineRuest).sort((a,b) => b[1]-a[1])[0] || ["-", 0];
             const mostStoerungMachine = Object.entries(s.machineStoerung).sort((a,b) => b[1]-a[1])[0] || ["-", 0];
+            
             document.getElementById('statsResult').innerHTML = `
                 <div class="bg-slate-900 p-5 rounded-3xl border border-blue-500/20">
                     <span class="text-[10px] uppercase font-black text-slate-500">🏆 meisten Rüstaufträge</span>
@@ -789,8 +1063,12 @@
         function exportDeepPDF() {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
-            doc.setFontSize(22); doc.text("KI ANALYSEBERICHT", 14, 25);
-            doc.setFontSize(10); doc.text(`Zeitraum: KW ${document.getElementById('statsFrom').value} bis ${document.getElementById('statsTo').value}`, 14, 32);
+            
+            doc.setFontSize(22); 
+            doc.text("KI ANALYSEBERICHT", 14, 25);
+            doc.setFontSize(10); 
+            doc.text(`Zeitraum: KW ${document.getElementById('statsFrom').value} bis ${document.getElementById('statsTo').value}`, 14, 32);
+            
             doc.autoTable({
                 startY: 40,
                 head: [['Metrik', 'Ergebnis']],
@@ -801,18 +1079,27 @@
                     ['Störungstrend', globalStats.trend],
                     ['Häufigster Umbau (Maschine)', Object.entries(globalStats.machineRuest).sort((a,b)=>b[1]-a[1])[0][0]]
                 ],
-                theme: 'striped', headStyles: {fillColor: [30, 41, 59]}
+                theme: 'striped', 
+                headStyles: {fillColor: [30, 41, 59]}
             });
             doc.save("KI_Performance_Report.pdf");
         }
 
         function handleLockButton() {
-            if (isEditLocked) { document.getElementById('pwModal').style.display = 'flex'; document.getElementById('pwInput').focus(); }
-            else { isEditLocked = true; updateLockButtonUI(); render(); showToast('Schutz aktiviert', 'success'); }
+            if (isEditLocked) { 
+                if(!currentUser) return;
+                document.getElementById('pwModal').style.display = 'flex'; 
+                document.getElementById('pwInput').focus(); 
+            } else { 
+                isEditLocked = true; 
+                updateLockButtonUI(); 
+                render(); 
+                showToast('Schutz aktiviert', 'success'); 
+            }
         }
         
         function checkPassword() {
-            if (document.getElementById('pwInput').value === "Gelenkwelle") { 
+            if (currentUser && users[currentUser.name] && document.getElementById('pwInput').value === users[currentUser.name].password) { 
                 isEditLocked = false; 
                 updateLockButtonUI(); 
                 closeModal(); 
@@ -823,7 +1110,10 @@
             }
         }
         
-        function closeModal() { document.getElementById('pwModal').style.display = 'none'; document.getElementById('pwInput').value = ''; }
+        function closeModal() { 
+            document.getElementById('pwModal').style.display = 'none'; 
+            document.getElementById('pwInput').value = ''; 
+        }
         
         function updateLockButtonUI() {
             const btn = document.getElementById('lockBtn');
@@ -838,8 +1128,34 @@
                 staff = data.staff || ["Mitarbeiter 1"];
                 machines = data.machines || ["Maschine 1"];
                 plan = data[`plan-${currentYear}-W${currentWeek}`] || {};
+                users = data.users || { "Admin": { role: "Admin", password: "admin" } };
+
+                let usersChanged = false;
+                
+                staff.forEach(s => {
+                    if (!users[s]) {
+                        users[s] = { role: "Mitarbeiter", password: "123" };
+                        usersChanged = true;
+                    }
+                });
+                
+                if (!users["Admin"]) {
+                    users["Admin"] = { role: "Admin", password: "admin" };
+                    usersChanged = true;
+                }
+                
+                if (usersChanged && canEditMaster()) {
+                    save();
+                }
+
                 document.getElementById('weekDisplay').innerText = `KW ${currentWeek.toString().padStart(2, '0')}`;
-                render();
+
+                // Dropdown immer füllen, wenn Firebase antwortet
+                populateLoginUsers();                
+                updateAdminUIVisibility();
+                
+                // Render wird IMMER aufgerufen, baut den Hintergrund auf.
+                render(); 
             });
         }
 
@@ -847,15 +1163,16 @@
             db.ref('rustplan_root').update({
                 [`/plan-${currentYear}-W${currentWeek}`]: plan,
                 [`/staff`]: staff,
-                [`/machines`]: machines
+                [`/machines`]: machines,
+                [`/users`]: users
             });
         }
 
         function render() {
             const main = document.getElementById('mainGrid');
             main.innerHTML = '';
-            const todayStr = new Date().toDateString();
             
+            const todayStr = new Date().toDateString();            
             const realIso = getIsoYearAndWeek(new Date());
             const isAW = (currentWeek === realIso.week && currentYear === realIso.year);
             const months = ["Jan","Feb","Mär","Apr","Mai","Jun","Jul","Aug","Sep","Okt","Nov","Dez"];
@@ -880,21 +1197,38 @@
                 staff.forEach((person, idx) => {
                     const key = `${day}-${person}`;
                     const color = getStaffColor(person, idx);
+                    
                     const slot = document.createElement('div');
                     slot.className = `bg-slate-900/40 rounded-lg p-2 flex flex-col border border-slate-800/50 mb-1`;
                     slot.style.borderLeft = `3px solid ${color}`;
                     slot.setAttribute('data-key', key);
 
-                    slot.addEventListener('dragover', (e) => { e.preventDefault(); slot.classList.add('drop-target'); });
-                    slot.addEventListener('dragleave', () => slot.classList.remove('drop-target'));
+                    slot.addEventListener('dragover', (e) => { 
+                        e.preventDefault(); 
+                        slot.classList.add('drop-target'); 
+                    });
+                    
+                    slot.addEventListener('dragleave', () => {
+                        slot.classList.remove('drop-target');
+                    });
+                    
                     slot.addEventListener('drop', (e) => {
                         e.preventDefault();
                         slot.classList.remove('drop-target');
+                        
+                        if (!canEditMaster()) {
+                            return showToast('Keine Berechtigung für Zuweisungen', 'error');
+                        }
                         if (isEditLocked) return;
+                        
                         const targetKey = slot.getAttribute('data-key');
+                        
                         if (dragSrc) {
                             const { key: srcKey, idx: srcIdx } = dragSrc;
-                            if (srcKey === targetKey) { dragSrc = null; return; }
+                            if (srcKey === targetKey) { 
+                                dragSrc = null; 
+                                return; 
+                            }
                             const item = plan[srcKey].splice(srcIdx, 1)[0];
                             if (!plan[targetKey]) plan[targetKey] = [];
                             plan[targetKey].push(item);
@@ -909,7 +1243,10 @@
                         }
                     });
 
-                    slot.innerHTML += `<div class="staff-header" style="color:${color}">${person}</div><div id="${key}"></div>`;
+                    slot.innerHTML += `
+                        <div class="staff-header" style="color:${color}">${person}</div>
+                        <div id="${key}"></div>
+                    `;
                     col.appendChild(slot);
                 });
                 main.appendChild(col);
@@ -920,7 +1257,9 @@
                 renderDayNav();
             }
 
-            draw(); renderStaff(); renderPool();
+            draw(); 
+            renderStaff(); 
+            renderPool();
         }
 
         function draw() {
@@ -928,18 +1267,24 @@
                 const key = el.getAttribute('data-key');
                 const container = document.getElementById(key);
                 if (!container) return;
+                
                 container.innerHTML = '';
+                
                 (plan[key] || []).forEach((m, idx) => {
                     const b = document.createElement('div');
                     b.className = `machine-badge status-${m.status || 'eingeplant'}`;
-                    b.draggable = !isEditLocked;
+                    b.draggable = canEditMaster() && !isEditLocked;
 
                     b.addEventListener('dragstart', (e) => {
-                        if (isEditLocked) { e.preventDefault(); return; }
+                        if (!canEditMaster() || isEditLocked) { 
+                            e.preventDefault(); 
+                            return; 
+                        }
                         dragSrc = { key, idx };
                         e.dataTransfer.effectAllowed = 'move';
                         setTimeout(() => b.classList.add('dragging'), 0);
                     });
+                    
                     b.addEventListener('dragend', () => {
                         dragSrc = null;
                         b.classList.remove('dragging');
@@ -947,20 +1292,34 @@
 
                     const n = document.createElement('span');
                     n.className = "whitespace-nowrap overflow-hidden text-ellipsis flex-1 min-w-0 cursor-pointer mr-2";
-                    n.onclick = () => toggleStatus(key, idx);
+                    n.onclick = () => {
+                        if (!canEditStatus()) return showToast('Keine Berechtigung', 'error');
+                        if (isEditLocked) return showToast('Planungsschutz aktiv', 'error');
+                        toggleStatus(key, idx);
+                    };
                     n.innerText = m.name;
                     b.appendChild(n);
 
                     if (m.showNote === true) {
                         const a = document.createElement('textarea');
-                        a.className = "note-area-inline"; a.value = m.note || "";
-                        a.onchange = (e) => { plan[key][idx].note = e.target.value; save(); };
+                        a.className = "note-area-inline"; 
+                        a.value = m.note || "";
+                        a.disabled = !canEditStatus() || isEditLocked;
+                        a.onchange = (e) => { 
+                            if (!canEditStatus() || isEditLocked) return;
+                            plan[key][idx].note = e.target.value; 
+                            save(); 
+                        };
                         b.appendChild(a);
                     }
 
                     const i = document.createElement('div');
                     i.className = "flex items-center gap-1 ml-auto flex-shrink-0";
-                    i.innerHTML = `<span onclick="toggleNoteInput('${key}', ${idx})" class="cursor-pointer ${m.note ? 'text-yellow-400' : 'opacity-60'}">💬</span>${!isEditLocked ? `<span onclick="removeFromPlan('${key}', ${idx})" class="cursor-pointer opacity-40">×</span>` : ''}`;
+                    i.innerHTML = `
+                        <span onclick="if(canEditStatus() && !isEditLocked) toggleNoteInput('${key}', ${idx}); else showToast('Keine Berechtigung/Gesperrt', 'error');" class="cursor-pointer ${m.note ? 'text-yellow-400' : 'opacity-60'}">💬</span>
+                        ${(canEditMaster() && !isEditLocked) ? `<span onclick="removeFromPlan('${key}', ${idx})" class="cursor-pointer opacity-40">×</span>` : ''}
+                    `;
+                    
                     b.appendChild(i);
                     container.appendChild(b);
                 });
@@ -974,7 +1333,12 @@
             save();
         }
 
-        function removeFromPlan(k, i) { if (!isEditLocked) { plan[k].splice(i, 1); save(); } }
+        function removeFromPlan(k, i) { 
+            if (canEditMaster() && !isEditLocked) { 
+                plan[k].splice(i, 1); 
+                save(); 
+            } 
+        }
         
         function changeWeek(dir) { 
             const d = getMondayOfWeek(currentYear, currentWeek);
@@ -992,25 +1356,51 @@
             listenToDatabase(); 
         }
 
-        function toggleNoteInput(k, i) { if (plan[k][i].note === undefined) plan[k][i].note = ""; plan[k][i].showNote = !plan[k][i].showNote; save(); }
+        function toggleNoteInput(k, i) { 
+            if (plan[k][i].note === undefined) {
+                plan[k][i].note = ""; 
+            }
+            plan[k][i].showNote = !plan[k][i].showNote; 
+            save(); 
+        }
         
-        function addStaff() { const v = document.getElementById('newStaff').value.trim(); if(v){ staff.push(v); save(); document.getElementById('newStaff').value=''; showToast('Personal hinzugefügt', 'success');} }
-        function addMachine() { const v = document.getElementById('newMachine').value.trim(); if(v){ machines.push(v); save(); document.getElementById('newMachine').value=''; showToast('Maschine hinzugefügt', 'success');} }
+        function addStaff() { 
+            if (!canEditMaster()) return showToast('Nur Admin / Planer!', 'error');
+            const v = document.getElementById('newStaff').value.trim(); 
+            if(v) { 
+                staff.push(v); 
+                if (!users[v]) users[v] = { role: 'Mitarbeiter', password: '123' };
+                save(); 
+                document.getElementById('newStaff').value = ''; 
+                showToast('Personal hinzugefügt', 'success');
+            } 
+        }
+        
+        function addMachine() { 
+            if (!canEditMaster()) return showToast('Nur Admin / Planer!', 'error');
+            const v = document.getElementById('newMachine').value.trim(); 
+            if(v) { 
+                machines.push(v); 
+                save(); 
+                document.getElementById('newMachine').value = ''; 
+                showToast('Maschine hinzugefügt', 'success');
+            } 
+        }
         
         function renderStaff() { 
             document.getElementById('staffList').innerHTML = staff.map(n => `
                 <div class="admin-item bg-slate-800 px-2 py-1 rounded text-[10px] flex items-center gap-2">
                     ${n}
-                    <span onclick="askConfirm('Personal löschen', '${n} wirklich entfernen?', () => { staff=staff.filter(s=>s!=='${n}'); save(); })" class="delete-btn">×</span>
+                    <span onclick="if(canEditMaster()){ askConfirm('Personal löschen', '${n} wirklich entfernen?', () => { staff=staff.filter(s=>s!=='${n}'); delete users['${n}']; save(); }); } else { showToast('Keine Berechtigung', 'error'); }" class="delete-btn">×</span>
                 </div>
             `).join(''); 
         }
         
         function renderPool() { 
             document.getElementById('pool').innerHTML = machines.map(m => `
-                <div draggable="true" ondragstart="dragSrc=null; event.dataTransfer.setData('text', '${m}')" class="admin-item bg-slate-800 p-2 rounded text-[9px] flex justify-between items-center cursor-move">
+                <div draggable="true" ondragstart="if(!canEditMaster()){event.preventDefault(); return showToast('Keine Berechtigung', 'error');} dragSrc=null; event.dataTransfer.setData('text', '${m}')" class="admin-item bg-slate-800 p-2 rounded text-[9px] flex justify-between items-center cursor-move">
                     <span>⚙️ ${m}</span>
-                    <span onclick="askConfirm('Maschine löschen', '${m} wirklich entfernen?', () => { machines=machines.filter(x=>x!=='${m}'); save(); })" class="delete-btn">×</span>
+                    <span onclick="if(canEditMaster()){ askConfirm('Maschine löschen', '${m} wirklich entfernen?', () => { machines=machines.filter(x=>x!=='${m}'); save(); }); } else { showToast('Keine Berechtigung', 'error'); }" class="delete-btn">×</span>
                 </div>
             `).join(''); 
         }

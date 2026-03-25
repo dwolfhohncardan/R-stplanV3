@@ -401,10 +401,18 @@
         <div class="bg-slate-800 p-8 rounded-3xl shadow-2xl w-96 border border-slate-600 text-center flex flex-col items-center">
             <h3 class="text-2xl font-black mb-2 uppercase italic text-blue-500">Login</h3>
             <p class="text-[10px] text-slate-400 mb-6 font-bold uppercase">Bitte anmelden um fortzufahren</p>
+            
             <select id="loginUser" class="w-full bg-slate-900 border-2 border-slate-700 rounded-xl p-3 mb-4 outline-none focus:border-blue-500 text-white font-bold appearance-none text-center">
                 <option value="">Lade Benutzer...</option>
             </select>
-            <input type="password" id="loginPw" onkeydown="if(event.key === 'Enter') doLogin()" class="w-full bg-slate-900 border-2 border-slate-700 rounded-xl p-3 mb-6 outline-none focus:border-blue-500 text-white text-center font-bold" placeholder="Passwort eingeben...">
+            
+            <input type="password" id="loginPw" onkeydown="if(event.key === 'Enter') doLogin()" class="w-full bg-slate-900 border-2 border-slate-700 rounded-xl p-3 mb-3 outline-none focus:border-blue-500 text-white text-center font-bold" placeholder="Passwort eingeben...">
+            
+            <div class="flex items-center gap-2 mb-6 w-full justify-start pl-2">
+                <input type="checkbox" id="keepLoggedIn" class="w-4 h-4 cursor-pointer rounded border-slate-700 bg-slate-900 text-blue-600 focus:ring-blue-500 focus:ring-offset-slate-800">
+                <label for="keepLoggedIn" class="text-[10px] text-slate-400 font-bold uppercase cursor-pointer select-none hover:text-white transition-colors">Angemeldet bleiben</label>
+            </div>
+            
             <button onclick="doLogin()" class="w-full bg-blue-600 hover:bg-blue-500 py-3 rounded-xl font-black text-white shadow-md uppercase tracking-widest transition-colors">Einloggen</button>
         </div>
     </div>
@@ -607,10 +615,28 @@
         function doLogin() {
             const user = document.getElementById('loginUser').value;
             const pw = document.getElementById('loginPw').value;
+            const keepLoggedIn = document.getElementById('keepLoggedIn').checked;
+            
             if (users[user] && users[user].password === pw) {
-                currentUser = { name: user, role: users[user].role };
+                // Sitzungstoken verwalten (falls noch keins existiert, ein neues erstellen)
+                let token = users[user].sessionToken;
+                if (!token) {
+                    token = Date.now();
+                    users[user].sessionToken = token;
+                    db.ref(`rustplan_root/users/${user}/sessionToken`).set(token);
+                }
+
+                currentUser = { name: user, role: users[user].role, sessionToken: token };
                 document.getElementById('loginModal').style.display = 'none';
-                sessionStorage.setItem('loggedInUser', JSON.stringify(currentUser));
+                
+                if (keepLoggedIn) {
+                    localStorage.setItem('loggedInUser', JSON.stringify(currentUser));
+                    sessionStorage.removeItem('loggedInUser');
+                } else {
+                    sessionStorage.setItem('loggedInUser', JSON.stringify(currentUser));
+                    localStorage.removeItem('loggedInUser');
+                }
+                
                 updateAdminUIVisibility();
                 render();
                 showToast(`Willkommen, ${user} (${currentUser.role})`, 'success');
@@ -619,13 +645,28 @@
             }
         }
 
-        function doLogout() {
+        function doLogout(forced = false) {
             currentUser = null;
             sessionStorage.removeItem('loggedInUser');
+            localStorage.removeItem('loggedInUser'); 
+            
             document.getElementById('loginPw').value = '';
+            document.getElementById('keepLoggedIn').checked = false;
             document.getElementById('loginModal').style.display = 'flex';
+            
             updateAdminUIVisibility();
             render();
+
+            if (forced) {
+                showToast('Sitzung abgelaufen oder beendet.', 'error');
+            }
+        }
+
+        function forceLogoutUser(name) {
+            if (!users[name]) return;
+            users[name].sessionToken = Date.now(); // Erzwingt bei allen anderen Geräten ein Logout
+            save();
+            showToast(`${name} wurde von allen Geräten abgemeldet`, 'success');
         }
 
         function openAdminModal() {
@@ -641,7 +682,8 @@
                         <option value="Fertigungsplaner" ${users[name].role === 'Fertigungsplaner' ? 'selected' : ''}>Fertigungsplaner</option>
                         <option value="Admin" ${users[name].role === 'Admin' ? 'selected' : ''}>Admin</option>
                     </select>
-                    <input type="text" id="pw-${name}" value="${users[name].password}" class="admin-input flex-1 w-full md:w-auto" placeholder="Passwort">
+                    <input type="text" id="pw-${name}" value="${users[name].password}" data-old-pw="${users[name].password}" class="admin-input flex-1 w-full md:w-auto" placeholder="Passwort">
+                    <button onclick="forceLogoutUser('${name}')" class="bg-rose-600 hover:bg-rose-500 text-white px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest whitespace-nowrap shadow-md transition-colors" title="Von allen Geräten abmelden">🚪 Abmelden</button>
                 </div>
             `).join('');
             document.getElementById('adminUserModal').style.display = 'flex';
@@ -650,8 +692,17 @@
         function saveUsersFromAdmin() {
             Object.keys(users).forEach(name => {
                 const role = document.getElementById(`role-${name}`).value;
-                const pw = document.getElementById(`pw-${name}`).value;
-                users[name] = { role, password: pw };
+                const pwInput = document.getElementById(`pw-${name}`);
+                const newPw = pwInput.value;
+                const oldPw = pwInput.getAttribute('data-old-pw');
+
+                // Wenn Passwort geändert wurde, Sitzung direkt mit-beenden
+                if (newPw !== oldPw) {
+                    users[name].sessionToken = Date.now();
+                }
+
+                users[name].role = role;
+                users[name].password = newPw;
             });
             save();
             closeAdminModal();
@@ -897,7 +948,6 @@
                 isEditLocked = true;
                 updateLockButtonUI();
                 
-                // NEU: Beim Start auf dem Handy immer in die Tagesansicht wechseln
                 if (!mobileViewActive) toggleMobileView();
                 
                 const enableAutoFullscreen = () => {
@@ -912,14 +962,16 @@
                 document.addEventListener('click', enableAutoFullscreen, { once: true });
             }
 
-            const savedUser = sessionStorage.getItem('loggedInUser');
+            const savedSession = sessionStorage.getItem('loggedInUser');
+            const savedLocal = localStorage.getItem('loggedInUser');
+            const savedUser = savedLocal || savedSession;
+            
             if (savedUser) {
                 try { 
                     currentUser = JSON.parse(savedUser); 
                 } catch(e){}
             }
 
-            // SOFORTIGES ANZEIGEN DES LOGINS FALLS NICHT EINGELOGGT
             if (!currentUser) {
                 document.getElementById('loginModal').style.display = 'flex';
             }
@@ -1151,13 +1203,21 @@
                     save();
                 }
 
+                // --- Live Sitzungs-Prüfung ---
+                if (currentUser) {
+                    const dbUser = users[currentUser.name];
+                    // Prüfen, ob der Nutzer gelöscht wurde ODER das SessionToken abweicht
+                    if (!dbUser || (dbUser.sessionToken && currentUser.sessionToken && dbUser.sessionToken !== currentUser.sessionToken)) {
+                        doLogout(true); // Wirft den User sofort raus
+                        return; // Beendet diesen Durchlauf für den unberechtigten User
+                    }
+                }
+
                 document.getElementById('weekDisplay').innerText = `KW ${currentWeek.toString().padStart(2, '0')}`;
 
-                // Dropdown immer füllen, wenn Firebase antwortet
                 populateLoginUsers();                
                 updateAdminUIVisibility();
                 
-                // Render wird IMMER aufgerufen, baut den Hintergrund auf.
                 render(); 
             });
         }

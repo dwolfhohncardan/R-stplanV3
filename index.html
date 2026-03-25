@@ -404,7 +404,7 @@
             <select id="loginUser" class="w-full bg-slate-900 border-2 border-slate-700 rounded-xl p-3 mb-4 outline-none focus:border-blue-500 text-white font-bold appearance-none text-center">
                 <option value="">Lade Benutzer...</option>
             </select>
-            <input type="password" id="loginPw" class="w-full bg-slate-900 border-2 border-slate-700 rounded-xl p-3 mb-6 outline-none focus:border-blue-500 text-white text-center font-bold" placeholder="Passwort eingeben...">
+            <input type="password" id="loginPw" onkeydown="if(event.key === 'Enter') doLogin()" class="w-full bg-slate-900 border-2 border-slate-700 rounded-xl p-3 mb-6 outline-none focus:border-blue-500 text-white text-center font-bold" placeholder="Passwort eingeben...">
             <button onclick="doLogin()" class="w-full bg-blue-600 hover:bg-blue-500 py-3 rounded-xl font-black text-white shadow-md uppercase tracking-widest transition-colors">Einloggen</button>
         </div>
     </div>
@@ -432,7 +432,7 @@
     <div id="pwModal">
         <div class="bg-slate-800 p-8 rounded-3xl shadow-2xl w-96 border border-slate-600 text-center">
             <h3 class="text-xl font-black mb-6 uppercase italic">Berechtigung prüfen</h3>
-            <input type="password" id="pwInput" class="w-full bg-slate-900 border-2 border-slate-700 rounded-xl p-3 mb-6 outline-none focus:border-blue-500 text-white text-center" placeholder="Persönliches Passwort...">
+            <input type="password" id="pwInput" onkeydown="if(event.key === 'Enter') checkPassword()" class="w-full bg-slate-900 border-2 border-slate-700 rounded-xl p-3 mb-6 outline-none focus:border-blue-500 text-white text-center" placeholder="Persönliches Passwort...">
             <div class="flex gap-4">
                 <button onclick="closeModal()" class="flex-1 bg-slate-700 py-3 rounded-xl font-bold">Abbruch</button>
                 <button onclick="checkPassword()" class="flex-1 bg-blue-600 py-3 rounded-xl font-bold">OK</button>
@@ -896,6 +896,9 @@
             if (isMobile()) {
                 isEditLocked = true;
                 updateLockButtonUI();
+                
+                // NEU: Beim Start auf dem Handy immer in die Tagesansicht wechseln
+                if (!mobileViewActive) toggleMobileView();
                 
                 const enableAutoFullscreen = () => {
                     if (!document.fullscreenElement) {

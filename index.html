@@ -16,7 +16,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-database-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
-    <script src="https://bernardo-castilho.github.io/DragDropTouch/DragDropTouch.js"></script>
+    <!-- DragDropTouch.js entfernt: Drag & Drop auf Mobile deaktiviert -->
 
     <style>
         :root { 
@@ -283,6 +283,12 @@
         
         .machine-badge:active { cursor: grabbing; }
         .machine-badge.dragging { opacity: 0.4; transform: scale(0.97); }
+
+        /* Auf Mobile kein Grab-Cursor für Badges */
+        @media (max-width: 768px) {
+            .machine-badge { cursor: default; }
+            .machine-badge:active { cursor: default; }
+        }
         
         @media (max-width: 480px) { .machine-badge { font-size: 10px; padding: 3px 5px; min-height: 34px; } }
         
@@ -298,6 +304,11 @@
         @media (max-width: 480px) { .staff-header { font-size: 10px; } }
         
         #pool { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+
+        /* Pool-Items auf Mobile: kein Drag-Cursor */
+        @media (max-width: 768px) {
+            #pool .admin-item { cursor: default !important; }
+        }
         
         .note-area-inline { 
             background: rgba(0,0,0,0.25); 
@@ -618,7 +629,6 @@
             const keepLoggedIn = document.getElementById('keepLoggedIn').checked;
             
             if (users[user] && users[user].password === pw) {
-                // Sitzungstoken verwalten (falls noch keins existiert, ein neues erstellen)
                 let token = users[user].sessionToken;
                 if (!token) {
                     token = Date.now();
@@ -664,7 +674,7 @@
 
         function forceLogoutUser(name) {
             if (!users[name]) return;
-            users[name].sessionToken = Date.now(); // Erzwingt bei allen anderen Geräten ein Logout
+            users[name].sessionToken = Date.now();
             save();
             showToast(`${name} wurde von allen Geräten abgemeldet`, 'success');
         }
@@ -696,7 +706,6 @@
                 const newPw = pwInput.value;
                 const oldPw = pwInput.getAttribute('data-old-pw');
 
-                // Wenn Passwort geändert wurde, Sitzung direkt mit-beenden
                 if (newPw !== oldPw) {
                     users[name].sessionToken = Date.now();
                 }
@@ -1206,10 +1215,9 @@
                 // --- Live Sitzungs-Prüfung ---
                 if (currentUser) {
                     const dbUser = users[currentUser.name];
-                    // Prüfen, ob der Nutzer gelöscht wurde ODER das SessionToken abweicht
                     if (!dbUser || (dbUser.sessionToken && currentUser.sessionToken && dbUser.sessionToken !== currentUser.sessionToken)) {
-                        doLogout(true); // Wirft den User sofort raus
-                        return; // Beendet diesen Durchlauf für den unberechtigten User
+                        doLogout(true);
+                        return;
                     }
                 }
 
@@ -1266,45 +1274,48 @@
                     slot.style.borderLeft = `3px solid ${color}`;
                     slot.setAttribute('data-key', key);
 
-                    slot.addEventListener('dragover', (e) => { 
-                        e.preventDefault(); 
-                        slot.classList.add('drop-target'); 
-                    });
-                    
-                    slot.addEventListener('dragleave', () => {
-                        slot.classList.remove('drop-target');
-                    });
-                    
-                    slot.addEventListener('drop', (e) => {
-                        e.preventDefault();
-                        slot.classList.remove('drop-target');
+                    // Drag & Drop Events nur auf Desktop registrieren
+                    if (!isMobile()) {
+                        slot.addEventListener('dragover', (e) => { 
+                            e.preventDefault(); 
+                            slot.classList.add('drop-target'); 
+                        });
                         
-                        if (!canEditMaster()) {
-                            return showToast('Keine Berechtigung für Zuweisungen', 'error');
-                        }
-                        if (isEditLocked) return;
+                        slot.addEventListener('dragleave', () => {
+                            slot.classList.remove('drop-target');
+                        });
                         
-                        const targetKey = slot.getAttribute('data-key');
-                        
-                        if (dragSrc) {
-                            const { key: srcKey, idx: srcIdx } = dragSrc;
-                            if (srcKey === targetKey) { 
-                                dragSrc = null; 
-                                return; 
+                        slot.addEventListener('drop', (e) => {
+                            e.preventDefault();
+                            slot.classList.remove('drop-target');
+                            
+                            if (!canEditMaster()) {
+                                return showToast('Keine Berechtigung für Zuweisungen', 'error');
                             }
-                            const item = plan[srcKey].splice(srcIdx, 1)[0];
-                            if (!plan[targetKey]) plan[targetKey] = [];
-                            plan[targetKey].push(item);
-                            dragSrc = null;
-                            save();
-                        } else {
-                            const name = e.dataTransfer.getData("text");
-                            if (!name) return;
-                            if (!plan[targetKey]) plan[targetKey] = [];
-                            plan[targetKey].push({ name, status: 'eingeplant' });
-                            save();
-                        }
-                    });
+                            if (isEditLocked) return;
+                            
+                            const targetKey = slot.getAttribute('data-key');
+                            
+                            if (dragSrc) {
+                                const { key: srcKey, idx: srcIdx } = dragSrc;
+                                if (srcKey === targetKey) { 
+                                    dragSrc = null; 
+                                    return; 
+                                }
+                                const item = plan[srcKey].splice(srcIdx, 1)[0];
+                                if (!plan[targetKey]) plan[targetKey] = [];
+                                plan[targetKey].push(item);
+                                dragSrc = null;
+                                save();
+                            } else {
+                                const name = e.dataTransfer.getData("text");
+                                if (!name) return;
+                                if (!plan[targetKey]) plan[targetKey] = [];
+                                plan[targetKey].push({ name, status: 'eingeplant' });
+                                save();
+                            }
+                        });
+                    }
 
                     slot.innerHTML += `
                         <div class="staff-header" style="color:${color}">${person}</div>
@@ -1336,22 +1347,28 @@
                 (plan[key] || []).forEach((m, idx) => {
                     const b = document.createElement('div');
                     b.className = `machine-badge status-${m.status || 'eingeplant'}`;
-                    b.draggable = canEditMaster() && !isEditLocked;
 
-                    b.addEventListener('dragstart', (e) => {
-                        if (!canEditMaster() || isEditLocked) { 
-                            e.preventDefault(); 
-                            return; 
-                        }
-                        dragSrc = { key, idx };
-                        e.dataTransfer.effectAllowed = 'move';
-                        setTimeout(() => b.classList.add('dragging'), 0);
-                    });
-                    
-                    b.addEventListener('dragend', () => {
-                        dragSrc = null;
-                        b.classList.remove('dragging');
-                    });
+                    // Drag & Drop auf Badges nur für Desktop aktivieren
+                    if (!isMobile()) {
+                        b.draggable = canEditMaster() && !isEditLocked;
+
+                        b.addEventListener('dragstart', (e) => {
+                            if (!canEditMaster() || isEditLocked) { 
+                                e.preventDefault(); 
+                                return; 
+                            }
+                            dragSrc = { key, idx };
+                            e.dataTransfer.effectAllowed = 'move';
+                            setTimeout(() => b.classList.add('dragging'), 0);
+                        });
+                        
+                        b.addEventListener('dragend', () => {
+                            dragSrc = null;
+                            b.classList.remove('dragging');
+                        });
+                    } else {
+                        b.draggable = false;
+                    }
 
                     const n = document.createElement('span');
                     n.className = "whitespace-nowrap overflow-hidden text-ellipsis flex-1 min-w-0 cursor-pointer mr-2";
@@ -1460,8 +1477,11 @@
         }
         
         function renderPool() { 
+            const mobile = isMobile();
             document.getElementById('pool').innerHTML = machines.map(m => `
-                <div draggable="true" ondragstart="if(!canEditMaster()){event.preventDefault(); return showToast('Keine Berechtigung', 'error');} dragSrc=null; event.dataTransfer.setData('text', '${m}')" class="admin-item bg-slate-800 p-2 rounded text-[9px] flex justify-between items-center cursor-move">
+                <div 
+                    ${!mobile ? `draggable="true" ondragstart="if(!canEditMaster()){event.preventDefault(); return showToast('Keine Berechtigung', 'error');} dragSrc=null; event.dataTransfer.setData('text', '${m}')"` : ''}
+                    class="admin-item bg-slate-800 p-2 rounded text-[9px] flex justify-between items-center ${!mobile ? 'cursor-move' : 'cursor-default'}">
                     <span>⚙️ ${m}</span>
                     <span onclick="if(canEditMaster()){ askConfirm('Maschine löschen', '${m} wirklich entfernen?', () => { machines=machines.filter(x=>x!=='${m}'); save(); }); } else { showToast('Keine Berechtigung', 'error'); }" class="delete-btn">×</span>
                 </div>

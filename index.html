@@ -392,12 +392,39 @@
             background: #1e293b; 
             gap: 1px; 
             margin-bottom: 4px;
+            cursor: pointer;
+            position: relative;
+            -webkit-tap-highlight-color: transparent;
+            transition: box-shadow 0.15s, border-color 0.15s;
         }
         
         .day-header.today-highlight { background: #3b82f6 !important; border-color: #60a5fa !important; }
         .day-header-name { font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.85; }
         .day-header-date { font-size: 15px; font-weight: 900; letter-spacing: 0.01em; line-height: 1; }
         .day-header-month { font-size: 9px; font-weight: 700; opacity: 0.65; text-transform: uppercase; letter-spacing: 0.05em; }
+
+        /* Spalte antippen zum Vergrößern (Lesbarkeit auf Tablet/Mobile) */
+        .day-header.expanded-active {
+            box-shadow: 0 0 0 2px #60a5fa inset;
+            border-color: #60a5fa;
+        }
+        .day-header.expanded-active::after {
+            content: '⤢';
+            position: absolute;
+            top: 4px;
+            right: 6px;
+            font-size: 11px;
+            opacity: 0.85;
+        }
+        #mainGrid.has-expanded .day-column {
+            min-width: 0;
+        }
+        .day-column.expanded .badge-name {
+            white-space: normal;
+            overflow: visible;
+            text-overflow: clip;
+            word-break: break-word;
+        }
     </style>
 </head>
 <body>
@@ -590,6 +617,7 @@
         let confirmAction = null; 
         let mobileViewActive = false;
         let activeDayIndex = 0;
+        let expandedDayIndex = null;
         let touchStartX = 0;
         let touchStartY = 0;
         let isSwiping = false;
@@ -843,6 +871,40 @@
                 renderDayNav();
                 removeSwipe();
             }
+            applyExpandedColumn();
+        }
+
+        // --- Spalte antippen zum Vergrößern (v.a. Tablet-Lesbarkeit) ---
+        function applyExpandedColumn() {
+            const grid = document.getElementById('mainGrid');
+            if (!grid) return;
+
+            // In der Tagesansicht ist die aktive Spalte ohnehin schon volle Breite - Funktion hier ohne Effekt
+            if (mobileViewActive || expandedDayIndex === null) {
+                grid.style.gridTemplateColumns = '';
+                grid.classList.remove('has-expanded');
+                document.querySelectorAll('.day-column').forEach(c => c.classList.remove('expanded'));
+                document.querySelectorAll('.day-header').forEach(h => h.classList.remove('expanded-active'));
+                return;
+            }
+
+            grid.classList.add('has-expanded');
+            grid.style.gridTemplateColumns = days
+                .map((_, i) => i === expandedDayIndex ? 'minmax(240px, 4fr)' : 'minmax(64px, 0.4fr)')
+                .join(' ');
+
+            document.querySelectorAll('.day-column').forEach(c => {
+                c.classList.toggle('expanded', Number(c.dataset.dayIndex) === expandedDayIndex);
+            });
+            document.querySelectorAll('.day-header').forEach(h => {
+                h.classList.toggle('expanded-active', Number(h.dataset.dayIndex) === expandedDayIndex);
+            });
+        }
+
+        function toggleDayExpand(dayIdx) {
+            if (mobileViewActive) return; // In der Tagesansicht bereits volle Breite
+            expandedDayIndex = (expandedDayIndex === dayIdx) ? null : dayIdx;
+            applyExpandedColumn();
         }
 
         function renderDayNav() {
@@ -1256,9 +1318,13 @@
 
                 const col = document.createElement('div');
                 col.className = 'day-column flex flex-col gap-2 min-w-0';
+                col.dataset.dayIndex = dayIdx;
 
                 const header = document.createElement('div');
                 header.className = `day-header${isToday ? ' today-highlight' : ''}`;
+                header.dataset.dayIndex = dayIdx;
+                header.title = 'Antippen zum Vergrößern dieser Spalte';
+                header.addEventListener('click', () => toggleDayExpand(dayIdx));
                 header.innerHTML = `
                     <div class="day-header-name">${day}</div>
                     <div class="day-header-date">${dd}. ${monthName}</div>
@@ -1334,6 +1400,7 @@
             draw(); 
             renderStaff(); 
             renderPool();
+            applyExpandedColumn();
         }
 
         function draw() {
@@ -1371,7 +1438,7 @@
                     }
 
                     const n = document.createElement('span');
-                    n.className = "whitespace-nowrap overflow-hidden text-ellipsis flex-1 min-w-0 cursor-pointer mr-2";
+                    n.className = "badge-name whitespace-nowrap overflow-hidden text-ellipsis flex-1 min-w-0 cursor-pointer mr-2";
                     n.onclick = () => {
                         if (!canEditStatus()) return showToast('Keine Berechtigung', 'error');
                         if (isEditLocked) return showToast('Planungsschutz aktiv', 'error');

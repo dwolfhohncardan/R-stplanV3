@@ -157,6 +157,34 @@
             .mobile-view-toggle { display: flex; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3); } 
         }
 
+        /* Aktualisieren-Button (Mobile: schwebend neben dem Menü) */
+        .mobile-refresh-btn {
+            display: none;
+            position: fixed;
+            top: 10px;
+            right: 152px;
+            z-index: 30;
+            background: #334155;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 12px;
+            cursor: pointer;
+            border: none;
+        }
+
+        @media (max-width: 768px) {
+            .mobile-refresh-btn { display: block; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3); }
+        }
+
+        .refresh-spin { display: inline-block; animation: refresh-rotate 0.8s linear infinite; }
+
+        @keyframes refresh-rotate {
+            from { transform: rotate(0deg); }
+            to   { transform: rotate(360deg); }
+        }
+
         main {
             flex-grow: 1;
             overflow-y: auto;
@@ -431,6 +459,7 @@
     <div id="toastContainer" class="fixed bottom-20 md:bottom-10 left-1/2 transform -translate-x-1/2 z-[400] flex flex-col gap-2 pointer-events-none"></div>
 
     <button class="mobile-menu-btn" onclick="toggleMobileSidebar()">☰ Menü</button>
+    <button class="mobile-refresh-btn" id="mobileRefreshBtn" onclick="refreshDashboard()">🔄</button>
     <button class="mobile-view-toggle" id="mobileViewToggleBtn" onclick="toggleMobileView()">⬛ Tagesansicht</button>
     <div id="dayNavBar"></div>
     <div class="mobile-overlay" id="mobileOverlay" onclick="closeMobileSidebar()"></div>
@@ -525,6 +554,8 @@
                             <span class="text-[14px] group-open:rotate-180 transition-transform">▼</span>
                         </summary>
                         <div class="space-y-4 pt-2 pb-4 border-b border-slate-800 mb-2">
+                            <button id="refreshBtn" onclick="refreshDashboard()" class="w-full bg-blue-600/20 text-blue-400 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest border border-blue-500/30 hover:bg-blue-600/40 transition">🔄 Dashboard aktualisieren</button>
+                            <div id="lastRefreshInfo" class="text-[9px] text-slate-500 font-bold uppercase text-center -mt-2">Noch nicht aktualisiert</div>
                             <button id="fullscreenBtn" onclick="toggleFullscreen()" class="w-full bg-slate-800 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-md border border-slate-600 hover:bg-slate-700 transition">⛶ Vollbild aktivieren</button>
                             <button onclick="if(canEditMaster()) { openStats() } else { showToast('Keine Berechtigung (nur Admin/Planer)', 'error') }" class="w-full bg-gradient-to-br from-indigo-600 to-blue-700 py-3 rounded-xl font-black uppercase italic tracking-tighter shadow-xl">🤖 KI Statistik</button>
                             <button id="adminMenuBtn" onclick="openAdminModal()" class="w-full bg-rose-600/20 text-rose-400 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest border border-rose-500/30 hover:bg-rose-600/40 transition hidden">⚙️ Admin Bereich</button>
@@ -622,9 +653,65 @@
         let touchStartY = 0;
         let isSwiping = false;
         let currentUser = null;
+        let isRefreshing = false;
 
         function isMobile() { 
             return window.innerWidth <= 768; 
+        }
+
+        // --- Dashboard aktualisieren ---
+        function setRefreshBusy(busy) {
+            const btn = document.getElementById('refreshBtn');
+            const mBtn = document.getElementById('mobileRefreshBtn');
+            if (btn) {
+                btn.disabled = busy;
+                btn.innerHTML = busy
+                    ? '<span class="refresh-spin">🔄</span> Aktualisiere...'
+                    : '🔄 Dashboard aktualisieren';
+            }
+            if (mBtn) {
+                mBtn.disabled = busy;
+                mBtn.innerHTML = busy ? '<span class="refresh-spin">🔄</span>' : '🔄';
+            }
+        }
+
+        function markRefreshTime() {
+            const info = document.getElementById('lastRefreshInfo');
+            if (!info) return;
+            const t = new Date();
+            const hh = t.getHours().toString().padStart(2, '0');
+            const mm = t.getMinutes().toString().padStart(2, '0');
+            const ss = t.getSeconds().toString().padStart(2, '0');
+            info.innerText = `Stand: ${hh}:${mm}:${ss} Uhr`;
+        }
+
+        function refreshDashboard() {
+            if (isRefreshing) return;
+            isRefreshing = true;
+            setRefreshBusy(true);
+            closeMobileSidebar();
+
+            // KW auf reale Woche prüfen (z.B. nach Wochenwechsel über Nacht)
+            const realIso = getIsoYearAndWeek(new Date());
+            lastRealIsoYear = realIso.year;
+            lastRealIsoWeek = realIso.week;
+            window.lastRenderedToday = new Date().toDateString();
+
+            db.ref('rustplan_root').once('value')
+                .then(() => {
+                    listenToDatabase();
+                    markRefreshTime();
+                    showToast('Dashboard aktualisiert', 'success');
+                })
+                .catch(() => {
+                    showToast('Keine Verbindung – Daten nicht aktualisiert', 'error');
+                })
+                .finally(() => {
+                    setTimeout(() => {
+                        isRefreshing = false;
+                        setRefreshBusy(false);
+                    }, 400);
+                });
         }
 
         // --- Rechte-System ---
@@ -1057,6 +1144,7 @@
             document.getElementById('statsFrom').value = currentWeek;
             document.getElementById('statsTo').value = currentWeek;
             listenToDatabase();
+            markRefreshTime();
             
             db.ref('.info/connected').on('value', function(snap) {
                 const statusEl = document.getElementById('connectionStatus');

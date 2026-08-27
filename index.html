@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="de">
 <head>
@@ -30,6 +31,7 @@
             --font-dayname: 10px;
             --font-daydate: 15px;
             --font-note: 9px;
+            --font-time: 10px;
             --badge-min-h: 38px;
             --badge-pad-y: 4px;
             --badge-pad-x: 6px;
@@ -320,6 +322,23 @@
         /* Leere Mitarbeiter-Zeilen ausblenden */
         body.hide-empty .slot-empty { display: none; }
 
+        /* ── Zeitanzeige am Badge ── */
+        .badge-time {
+            font-size: var(--font-time);
+            font-weight: 900;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: 0.02em;
+            padding: 1px 6px;
+            border-radius: 999px;
+            background: rgba(0,0,0,0.32);
+            border: 1px solid rgba(255,255,255,0.14);
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .badge-time.warn   { background: #b45309; border-color: #fbbf24; color: #fffbeb; }
+        .badge-time.alarm  { background: #b91c1c; border-color: #fca5a5; color: #fff1f2; }
+        .badge-time.done   { background: rgba(16,185,129,0.18); border-color: rgba(110,231,183,0.45); }
+
         .machine-badge { 
             min-height: var(--badge-min-h); 
             margin-bottom: var(--badge-gap); 
@@ -575,6 +594,20 @@
 
                 <div class="set-row set-toggle">
                     <div>
+                        <div class="set-label"><span>Laufzeit anzeigen</span></div>
+                        <div class="text-[9px] text-slate-500 font-bold mt-1">Rüstdauer und Störungsdauer am Auftrag</div>
+                    </div>
+                    <input type="checkbox" id="setTimes" onchange="onSetting('showTimes', this.checked)">
+                </div>
+
+                <div class="set-row">
+                    <div class="set-label"><span>Warnung ab Rüstdauer</span><span class="set-value" id="valWarn">60 min</span></div>
+                    <input type="range" class="set-range" id="setWarn" min="0" max="240" step="15" oninput="onSetting('warnMin', this.value)">
+                    <div class="text-[9px] text-slate-500 font-bold">0 = aus · Gelb ab Grenze, Rot ab doppelter Grenze</div>
+                </div>
+
+                <div class="set-row set-toggle">
+                    <div>
                         <div class="set-label"><span>Hoher Kontrast</span></div>
                         <div class="text-[9px] text-slate-500 font-bold mt-1">Kräftigere Farben für helle Hallen</div>
                     </div>
@@ -757,6 +790,7 @@
 
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
+        const SERVER_TS = firebase.database.ServerValue.TIMESTAMP;
 
         const ROOT = 'rustplan_root';
         const SETTINGS_KEY = 'ruestplan_ui_v1';
@@ -787,6 +821,10 @@
         let currentUser = null;
         let isRefreshing = false;
 
+        // --- Zeiterfassung ---
+        let serverOffset = 0;   // Ausgleich abweichender Geräteuhren
+        let timeTicker = null;
+
         // --- Listener-Verwaltung ---
         let baseRefs = [];
         let planRef = null;
@@ -795,6 +833,29 @@
 
         // --- Render-Steuerung ---
         let structureSignature = null;
+
+        function serverNow() {
+            return Date.now() + serverOffset;
+        }
+
+        // Laufende Anzeige: 12:34 (mm:ss) bzw. 2:05 h
+        function formatDur(ms) {
+            if (!ms || ms < 0) ms = 0;
+            const total = Math.floor(ms / 1000);
+            const h = Math.floor(total / 3600);
+            const m = Math.floor((total % 3600) / 60);
+            const s = total % 60;
+            if (h > 0) return `${h}:${String(m).padStart(2,'0')} h`;
+            return `${m}:${String(s).padStart(2,'0')}`;
+        }
+
+        // Abgeschlossene Dauer: 18 min bzw. 1:20 h
+        function formatDurShort(ms) {
+            if (!ms || ms < 0) return '–';
+            const m = Math.round(ms / 60000);
+            if (m < 60) return `${m} min`;
+            return `${Math.floor(m/60)}:${String(m%60).padStart(2,'0')} h`;
+        }
 
         // =========================================================
         //  ANSICHTS-EINSTELLUNGEN (gerätelokal)
@@ -809,6 +870,8 @@
             contrast: false,
             animations: true,
             hideEmpty: false,
+            showTimes: true,
+            warnMin: 60,
             hiddenStaff: []
         };
 
@@ -851,6 +914,7 @@
             r.setProperty('--font-dayname', Math.round(10 * s) + 'px');
             r.setProperty('--font-daydate', Math.round(15 * s) + 'px');
             r.setProperty('--font-note',    Math.round(9  * s) + 'px');
+            r.setProperty('--font-time',    Math.round(10 * s) + 'px');
             r.setProperty('--note-h',       Math.round(22 * s) + 'px');
 
             r.setProperty('--badge-min-h', settings.badgeHeight + 'px');
@@ -888,6 +952,8 @@
             document.getElementById('setBadge').value = settings.badgeHeight;
             document.getElementById('setCol').value = settings.colWidth;
             document.getElementById('setGap').value = settings.gridGap;
+            document.getElementById('setWarn').value = settings.warnMin;
+            document.getElementById('setTimes').checked = !!settings.showTimes;
             document.getElementById('setContrast').checked = !!settings.contrast;
             document.getElementById('setAnim').checked = !!settings.animations;
             document.getElementById('setHideEmpty').checked = !!settings.hideEmpty;
@@ -896,6 +962,7 @@
             document.getElementById('valBadge').innerText = settings.badgeHeight + ' px';
             document.getElementById('valCol').innerText = settings.colWidth + ' px';
             document.getElementById('valGap').innerText = settings.gridGap + ' px';
+            document.getElementById('valWarn').innerText = settings.warnMin === 0 ? 'aus' : settings.warnMin + ' min';
 
             const dLabels = { kompakt: 'Kompakt', normal: 'Normal', weit: 'Weit' };
             document.getElementById('valDensity').innerText = dLabels[settings.density] || 'Normal';
@@ -940,7 +1007,7 @@
         }
 
         function onSetting(key, value) {
-            if (key === 'textScale' || key === 'badgeHeight' || key === 'colWidth' || key === 'gridGap') {
+            if (['textScale','badgeHeight','colWidth','gridGap','warnMin'].indexOf(key) !== -1) {
                 settings[key] = parseInt(value, 10);
             } else {
                 settings[key] = value;
@@ -950,6 +1017,8 @@
             persistSettings();
 
             if (key === 'hideEmpty') markEmptySlots();
+            if (key === 'showTimes') draw();
+            if (key === 'warnMin') updateLiveTimes();
         }
 
         function applyPreset(name) {
@@ -1615,8 +1684,16 @@
 
             updateWeekDisplay();
             updateAdminUIVisibility();
+
+            // Serverzeit-Versatz: gleiche Laufzeiten auf allen Geräten
+            db.ref('.info/serverTimeOffset').on('value', snap => {
+                serverOffset = snap.val() || 0;
+                updateLiveTimes();
+            });
+
             attachBaseListeners();
             attachPlanListener();
+            startTimeTicker();
             markRefreshTime();
             
             db.ref('.info/connected').on('value', function(snap) {
@@ -1659,6 +1736,81 @@
             }, 60000); 
         }
 
+        // =========================================================
+        //  LAUFZEIT-TICKER – aktualisiert nur Textknoten, kein Re-Render
+        // =========================================================
+
+        function startTimeTicker() {
+            if (timeTicker) clearInterval(timeTicker);
+            timeTicker = setInterval(updateLiveTimes, 1000);
+        }
+
+        function applyWarnClass(el, ms, kind) {
+            el.classList.remove('warn', 'alarm', 'done');
+            if (kind === 'done') { el.classList.add('done'); return; }
+            if (kind === 'stoerung') { el.classList.add('alarm'); return; }
+            const limit = settings.warnMin;
+            if (!limit) return;
+            const min = ms / 60000;
+            if (min >= limit * 2) el.classList.add('alarm');
+            else if (min >= limit) el.classList.add('warn');
+        }
+
+        function updateLiveTimes() {
+            const nodes = document.querySelectorAll('.badge-time[data-live="1"]');
+            if (!nodes.length) return;
+            const now = serverNow();
+            nodes.forEach(el => {
+                const from = parseInt(el.getAttribute('data-from'), 10);
+                if (!from) return;
+                const ms = now - from;
+                el.textContent = el.getAttribute('data-prefix') + formatDur(ms);
+                applyWarnClass(el, ms, el.getAttribute('data-kind'));
+            });
+        }
+
+        function buildTimeChip(m) {
+            if (!settings.showTimes) return null;
+
+            const el = document.createElement('span');
+            el.className = 'badge-time';
+
+            if (m.status === 'umbau' && m.startTs) {
+                const ms = serverNow() - m.startTs;
+                el.setAttribute('data-live', '1');
+                el.setAttribute('data-from', m.startTs);
+                el.setAttribute('data-prefix', '⏱ ');
+                el.setAttribute('data-kind', 'umbau');
+                el.textContent = '⏱ ' + formatDur(ms);
+                applyWarnClass(el, ms, 'umbau');
+                el.title = 'Rüstbeginn: ' + new Date(m.startTs).toLocaleString('de-DE');
+                return el;
+            }
+
+            if (m.status === 'erledigt' && m.dauerMs) {
+                el.textContent = '✓ ' + formatDurShort(m.dauerMs);
+                applyWarnClass(el, m.dauerMs, 'done');
+                el.title = 'Gerüstet in ' + formatDurShort(m.dauerMs)
+                    + (m.startTs ? '\nStart: ' + new Date(m.startTs).toLocaleString('de-DE') : '')
+                    + (m.endTs ? '\nEnde: ' + new Date(m.endTs).toLocaleString('de-DE') : '');
+                return el;
+            }
+
+            if (m.status === 'stoerung' && m.stoerTs) {
+                const ms = serverNow() - m.stoerTs;
+                el.setAttribute('data-live', '1');
+                el.setAttribute('data-from', m.stoerTs);
+                el.setAttribute('data-prefix', '🚨 ');
+                el.setAttribute('data-kind', 'stoerung');
+                el.textContent = '🚨 ' + formatDur(ms);
+                applyWarnClass(el, ms, 'stoerung');
+                el.title = 'Störung gemeldet: ' + new Date(m.stoerTs).toLocaleString('de-DE');
+                return el;
+            }
+
+            return null;
+        }
+
         function openStats() { 
             closeMobileSidebar(); 
             document.getElementById('statsModal').style.display = 'flex'; 
@@ -1687,6 +1839,10 @@
                 stoerungenProWoche: {}, 
                 totalRuest: 0, 
                 totalStoerung: 0, 
+                dauerSum: 0,
+                dauerCount: 0,
+                laengsterUmbau: { name: '-', ms: 0 },
+                machineDauer: {},
                 details: [] 
             };
 
@@ -1709,12 +1865,24 @@
                         stats.totalRuest++;
                         stats.machineRuest[m.name] = (stats.machineRuest[m.name] || 0) + 1;
                         stats.staffCounts[person] = (stats.staffCounts[person] || 0) + 1;
+
+                        if (m.dauerMs && m.dauerMs > 0) {
+                            stats.dauerSum += m.dauerMs;
+                            stats.dauerCount++;
+                            if (!stats.machineDauer[m.name]) stats.machineDauer[m.name] = { sum: 0, n: 0 };
+                            stats.machineDauer[m.name].sum += m.dauerMs;
+                            stats.machineDauer[m.name].n++;
+                            if (m.dauerMs > stats.laengsterUmbau.ms) {
+                                stats.laengsterUmbau = { name: m.name, ms: m.dauerMs };
+                            }
+                        }
+
                         if (m.status === 'stoerung') { 
                             stats.totalStoerung++; 
                             stats.machineStoerung[m.name] = (stats.machineStoerung[m.name] || 0) + 1; 
                             stats.stoerungenProWoche[w]++; 
                         }
-                        stats.details.push({ kw: w, tag: day, name: person, maschine: m.name, status: m.status });
+                        stats.details.push({ kw: w, tag: day, name: person, maschine: m.name, status: m.status, dauerMs: m.dauerMs || null });
                     });
                 });
             });
@@ -1736,6 +1904,11 @@
             const bestStaff = Object.entries(s.staffCounts).sort((a,b) => b[1]-a[1])[0] || ["-", 0];
             const mostRuestMachine = Object.entries(s.machineRuest).sort((a,b) => b[1]-a[1])[0] || ["-", 0];
             const mostStoerungMachine = Object.entries(s.machineStoerung).sort((a,b) => b[1]-a[1])[0] || ["-", 0];
+            const avgDauer = s.dauerCount ? s.dauerSum / s.dauerCount : 0;
+
+            const langsamste = Object.entries(s.machineDauer)
+                .map(([name, d]) => [name, d.sum / d.n])
+                .sort((a,b) => b[1]-a[1])[0] || ["-", 0];
             
             document.getElementById('statsResult').innerHTML = `
                 <div class="bg-slate-900 p-5 rounded-3xl border border-blue-500/20">
@@ -1748,6 +1921,16 @@
                     <div class="text-xl md:text-2xl font-black text-white mt-1">${s.trend}</div>
                     <div class="text-xs text-rose-400 font-bold uppercase">${s.totalStoerung} Störungen</div>
                 </div>
+                <div class="bg-slate-900 p-5 rounded-3xl border border-emerald-500/20">
+                    <span class="text-[10px] uppercase font-black text-slate-500">⏱ Ø Rüstdauer</span>
+                    <div class="text-xl md:text-2xl font-black text-white mt-1">${s.dauerCount ? formatDurShort(avgDauer) : 'keine Daten'}</div>
+                    <div class="text-xs text-emerald-400 font-bold uppercase">${s.dauerCount} gemessene Umbaue</div>
+                </div>
+                <div class="bg-slate-900 p-5 rounded-3xl border border-orange-500/20">
+                    <span class="text-[10px] uppercase font-black text-slate-500">🐢 Längster Umbau</span>
+                    <div class="text-xl md:text-2xl font-black text-white mt-1">${s.laengsterUmbau.name}</div>
+                    <div class="text-xs text-orange-400 font-bold uppercase">${s.laengsterUmbau.ms ? formatDurShort(s.laengsterUmbau.ms) : '–'}</div>
+                </div>
                 <div class="bg-slate-900 p-5 rounded-3xl border border-amber-500/20">
                     <span class="text-[10px] uppercase font-black text-slate-500">🛠️ Häufigster Umbau</span>
                     <div class="text-xl md:text-2xl font-black text-white mt-1">${mostRuestMachine[0]}</div>
@@ -1757,6 +1940,11 @@
                     <span class="text-[10px] uppercase font-black text-slate-500">⚠️ Problem-Maschine</span>
                     <div class="text-xl md:text-2xl font-black text-rose-500 mt-1">${mostStoerungMachine[0]}</div>
                     <div class="text-xs text-rose-300 font-bold uppercase">${mostStoerungMachine[1]} Störungen</div>
+                </div>
+                <div class="bg-slate-900 p-5 rounded-3xl border border-slate-600/40 md:col-span-2">
+                    <span class="text-[10px] uppercase font-black text-slate-500">🕐 Höchste Ø Rüstdauer je Maschine</span>
+                    <div class="text-xl md:text-2xl font-black text-white mt-1">${langsamste[0]}</div>
+                    <div class="text-xs text-slate-400 font-bold uppercase">${langsamste[1] ? 'Ø ' + formatDurShort(langsamste[1]) : 'keine Daten'}</div>
                 </div>`;
         }
 
@@ -1772,6 +1960,7 @@
 
             const bestStaffEntry = Object.entries(globalStats.staffCounts).sort((a,b)=>b[1]-a[1])[0];
             const mostRuestEntry = Object.entries(globalStats.machineRuest).sort((a,b)=>b[1]-a[1])[0];
+            const avgDauer = globalStats.dauerCount ? globalStats.dauerSum / globalStats.dauerCount : 0;
             
             doc.autoTable({
                 startY: 40,
@@ -1781,7 +1970,12 @@
                     ['Gesamtzahl Umbaue', globalStats.totalRuest],
                     ['Gesamtzahl Störungen', globalStats.totalStoerung],
                     ['Störungstrend', globalStats.trend],
-                    ['Häufigster Umbau (Maschine)', mostRuestEntry ? mostRuestEntry[0] : '-']
+                    ['Häufigster Umbau (Maschine)', mostRuestEntry ? mostRuestEntry[0] : '-'],
+                    ['Ø Rüstdauer', globalStats.dauerCount ? formatDurShort(avgDauer) : 'keine Daten'],
+                    ['Gemessene Umbaue', globalStats.dauerCount],
+                    ['Längster Umbau', globalStats.laengsterUmbau.ms
+                        ? `${globalStats.laengsterUmbau.name} (${formatDurShort(globalStats.laengsterUmbau.ms)})`
+                        : '-']
                 ],
                 theme: 'striped', 
                 headStyles: {fillColor: [30, 41, 59]}
@@ -2018,6 +2212,9 @@
                         b.appendChild(a);
                     }
 
+                    const chip = buildTimeChip(m);
+                    if (chip) b.appendChild(chip);
+
                     const i = document.createElement('div');
                     i.className = "flex items-center gap-1 ml-auto flex-shrink-0";
                     i.innerHTML = `
@@ -2033,14 +2230,58 @@
             markEmptySlots();
         }
 
+        // =========================================================
+        //  STATUS + ZEITERFASSUNG
+        //  eingeplant → umbau (Start)  → erledigt (Stopp) → stoerung → eingeplant (Reset)
+        // =========================================================
         function toggleStatus(k, i) {
             if (!plan[k] || !plan[k][i]) return;
+            const item = plan[k][i];
             const s = ['eingeplant', 'umbau', 'erledigt', 'stoerung'];
-            const cur = plan[k][i].status || 'eingeplant';
+            const cur = item.status || 'eingeplant';
             const next = s[(s.indexOf(cur) + 1) % 4];
-            plan[k][i].status = next;
+            const now = serverNow();
+
+            const fields = { status: next };
+            item.status = next;
+
+            if (next === 'umbau') {
+                // Rüstbeginn: Uhr startet, alte Messung verwerfen
+                fields.startTs = SERVER_TS;
+                fields.endTs = null;
+                fields.dauerMs = null;
+                item.startTs = now;
+                item.endTs = null;
+                item.dauerMs = null;
+
+            } else if (next === 'erledigt') {
+                // Rüstende: Dauer festschreiben
+                if (item.startTs) {
+                    fields.endTs = SERVER_TS;
+                    fields.dauerMs = now - item.startTs;
+                    item.endTs = now;
+                    item.dauerMs = now - item.startTs;
+                }
+
+            } else if (next === 'stoerung') {
+                // Störungsuhr startet, Rüstdauer bleibt erhalten
+                fields.stoerTs = SERVER_TS;
+                item.stoerTs = now;
+
+            } else {
+                // Zurück auf "eingeplant": alle Zeiten zurücksetzen
+                fields.startTs = null;
+                fields.endTs = null;
+                fields.dauerMs = null;
+                fields.stoerTs = null;
+                item.startTs = null;
+                item.endTs = null;
+                item.dauerMs = null;
+                item.stoerTs = null;
+            }
+
             draw();
-            setPlanField(k, i, { status: next });
+            setPlanField(k, i, fields);
         }
 
         function removeFromPlan(k, i) { 

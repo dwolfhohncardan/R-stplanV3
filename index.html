@@ -23,6 +23,22 @@
             --bg-main: #0f172a; 
             --bg-sidebar: #1e293b; 
             --accent: #3b82f6; 
+
+            /* ── Anpassbare Ansicht (wird per Einstellungen überschrieben) ── */
+            --font-badge: 11px;
+            --font-staff: 11px;
+            --font-dayname: 10px;
+            --font-daydate: 15px;
+            --font-note: 9px;
+            --badge-min-h: 38px;
+            --badge-pad-y: 4px;
+            --badge-pad-x: 6px;
+            --badge-gap: 6px;
+            --slot-pad: 8px;
+            --slot-gap: 4px;
+            --note-h: 22px;
+            --col-min: 160px;
+            --grid-gap: 8px;
         }
         
         * { 
@@ -157,12 +173,11 @@
             .mobile-view-toggle { display: flex; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3); } 
         }
 
-        /* Aktualisieren-Button (Mobile: schwebend neben dem Menü) */
-        .mobile-refresh-btn {
+        /* Aktualisieren- und Einstellungen-Button (Mobile: schwebend) */
+        .mobile-refresh-btn, .mobile-settings-btn {
             display: none;
             position: fixed;
             top: 10px;
-            right: 152px;
             z-index: 30;
             background: #334155;
             color: white;
@@ -173,9 +188,11 @@
             cursor: pointer;
             border: none;
         }
+        .mobile-refresh-btn { right: 152px; }
+        .mobile-settings-btn { right: 200px; }
 
         @media (max-width: 768px) {
-            .mobile-refresh-btn { display: block; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3); }
+            .mobile-refresh-btn, .mobile-settings-btn { display: block; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3); }
         }
 
         .refresh-spin { display: inline-block; animation: refresh-rotate 0.8s linear infinite; }
@@ -199,21 +216,18 @@
 
         #mainGrid {
             display: grid;
-            grid-template-columns: repeat(5, minmax(160px, 1fr));
-            gap: 0.5rem;
+            grid-template-columns: repeat(5, minmax(var(--col-min), 1fr));
+            gap: var(--grid-gap);
             min-width: max-content;
             width: 100%;
         }
 
         @media (max-width: 1200px) {
-            #mainGrid { grid-template-columns: repeat(3, minmax(160px, 1fr)); }
+            #mainGrid { grid-template-columns: repeat(3, minmax(var(--col-min), 1fr)); }
         }
         @media (max-width: 768px) {
             main { padding: 56px 0.5rem 0.5rem 0.5rem; }
-            #mainGrid { grid-template-columns: repeat(5, minmax(140px, 1fr)); gap: 0.4rem; }
-        }
-        @media (max-width: 480px) {
-            #mainGrid { grid-template-columns: repeat(5, minmax(120px, 1fr)); }
+            #mainGrid { grid-template-columns: repeat(5, minmax(var(--col-min), 1fr)); }
         }
 
         /* ── Mobile Single-Day View ── */
@@ -291,17 +305,32 @@
             100% { box-shadow: 0 0 6px 2px rgba(239,68,68,0.5), 0 0 14px 4px rgba(239,68,68,0.2); }
         }
 
+        /* Animationen abschaltbar (Halle / schwache Geräte) */
+        body.no-anim .status-stoerung { animation: none; }
+        body.no-anim .animate-pulse { animation: none !important; }
+
+        /* Hoher Kontrast für Hallenbeleuchtung */
+        body.contrast-high .status-eingeplant { background-color: #475569; color: #ffffff; border-left-color: #cbd5e1; }
+        body.contrast-high .status-umbau      { background-color: #1d4ed8; color: #ffffff; border-left-color: #93c5fd; }
+        body.contrast-high .status-erledigt   { background-color: #047857; color: #ffffff; border-left-color: #6ee7b7; }
+        body.contrast-high .status-stoerung   { background-color: #b91c1c; color: #ffffff; }
+        body.contrast-high .staff-header      { color: #ffffff !important; }
+        body.contrast-high .machine-badge     { font-weight: 900; }
+
+        /* Leere Mitarbeiter-Zeilen ausblenden */
+        body.hide-empty .slot-empty { display: none; }
+
         .machine-badge { 
-            min-height: 38px; 
-            margin-bottom: 6px; 
+            min-height: var(--badge-min-h); 
+            margin-bottom: var(--badge-gap); 
             display: flex; 
             flex-direction: row; 
             align-items: center; 
             gap: 4px; 
-            padding: 4px 6px; 
+            padding: var(--badge-pad-y) var(--badge-pad-x); 
             border-radius: 6px; 
             font-weight: 700; 
-            font-size: 11px; 
+            font-size: var(--font-badge); 
             box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3); 
             width: 100%; 
             flex-wrap: wrap;
@@ -318,18 +347,14 @@
             .machine-badge:active { cursor: default; }
         }
         
-        @media (max-width: 480px) { .machine-badge { font-size: 10px; padding: 3px 5px; min-height: 34px; } }
-        
         .staff-header { 
-            font-size: 11px; 
+            font-size: var(--font-staff); 
             font-weight: 900; 
             color: #94a3b8; 
             text-transform: uppercase; 
             letter-spacing: 0.05em; 
             margin-bottom: 6px; 
         }
-        
-        @media (max-width: 480px) { .staff-header { font-size: 10px; } }
         
         #pool { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 
@@ -343,9 +368,9 @@
             border: 1px solid rgba(255,255,255,0.1); 
             border-radius: 4px; 
             color: white; 
-            font-size: 9px; 
+            font-size: var(--font-note); 
             padding: 2px 4px; 
-            height: 22px; 
+            height: var(--note-h); 
             flex-grow: 1; 
             outline: none; 
             resize: none; 
@@ -370,7 +395,7 @@
         
         @media (max-width: 768px) { .delete-btn { opacity: 0.7; } }
         
-        #pwModal, #statsModal, #confirmModal, #loginModal, #adminUserModal { 
+        #pwModal, #statsModal, #confirmModal, #loginModal, #adminUserModal, #settingsModal { 
             display: none; 
             position: fixed; 
             inset: 0; 
@@ -384,13 +409,30 @@
         
         #loginModal { z-index: 300; }
         #adminUserModal { z-index: 250; }
-        #pwModal > div, #statsModal > div, #confirmModal > div { max-width: 95vw; max-height: 95vh; overflow-y: auto; }
+        #settingsModal { z-index: 200; }
+        #pwModal > div, #statsModal > div, #confirmModal > div, #settingsModal > div { max-width: 95vw; max-height: 95vh; overflow-y: auto; }
         #confirmModal { z-index: 150; }
         
         @media (max-width: 768px) { 
             #statsModal > div { width: 100% !important; padding: 1rem; border-radius: 1rem; } 
             #statsResult { grid-template-columns: 1fr !important; } 
+            #settingsModal > div { width: 100% !important; padding: 1.25rem; border-radius: 1rem; }
         }
+
+        /* Einstellungen: Regler & Schalter */
+        .set-row { background: #0f172a; border: 1px solid #334155; border-radius: 14px; padding: 12px 14px; }
+        .set-label { font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8; display: flex; justify-content: space-between; align-items: center; }
+        .set-value { color: #60a5fa; font-size: 11px; }
+        .set-range { width: 100%; margin-top: 8px; accent-color: #3b82f6; height: 26px; cursor: pointer; }
+        .set-seg { display: flex; gap: 6px; margin-top: 8px; }
+        .set-seg button { flex: 1; padding: 8px 4px; border-radius: 10px; border: 1px solid #334155; background: #1e293b; color: #94a3b8; font-size: 10px; font-weight: 900; text-transform: uppercase; cursor: pointer; }
+        .set-seg button.active { background: #1d4ed8; color: #fff; border-color: #3b82f6; }
+        .set-toggle { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+        .set-toggle input { width: 44px; height: 26px; accent-color: #3b82f6; cursor: pointer; }
+        .preset-btn { padding: 10px 6px; border-radius: 12px; border: 1px solid #334155; background: #1e293b; color: #cbd5e1; font-size: 10px; font-weight: 900; text-transform: uppercase; cursor: pointer; }
+        .preset-btn:hover { background: #334155; color: #fff; }
+        .staff-toggle { display: flex; align-items: center; gap: 8px; background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 6px 10px; font-size: 11px; font-weight: 700; cursor: pointer; }
+        .staff-toggle input { accent-color: #3b82f6; width: 16px; height: 16px; }
         
         .today-highlight { 
             background-color: #3b82f6 !important; 
@@ -400,7 +442,9 @@
         }
         
         .day-column { min-width: 0; }
-        @media (max-width: 768px) { .day-column { min-width: 140px; } }
+        @media (max-width: 768px) { .day-column { min-width: var(--col-min); } }
+
+        .plan-slot { padding: var(--slot-pad); margin-bottom: var(--slot-gap); }
 
         .drop-target { 
             outline: 2px dashed #3b82f6; 
@@ -427,8 +471,8 @@
         }
         
         .day-header.today-highlight { background: #3b82f6 !important; border-color: #60a5fa !important; }
-        .day-header-name { font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.85; }
-        .day-header-date { font-size: 15px; font-weight: 900; letter-spacing: 0.01em; line-height: 1; }
+        .day-header-name { font-size: var(--font-dayname); font-weight: 900; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.85; }
+        .day-header-date { font-size: var(--font-daydate); font-weight: 900; letter-spacing: 0.01em; line-height: 1; }
         .day-header-month { font-size: 9px; font-weight: 700; opacity: 0.65; text-transform: uppercase; letter-spacing: 0.05em; }
 
         /* Spalte antippen zum Vergrößern (Lesbarkeit auf Tablet/Mobile) */
@@ -459,6 +503,7 @@
     <div id="toastContainer" class="fixed bottom-20 md:bottom-10 left-1/2 transform -translate-x-1/2 z-[400] flex flex-col gap-2 pointer-events-none"></div>
 
     <button class="mobile-menu-btn" onclick="toggleMobileSidebar()">☰ Menü</button>
+    <button class="mobile-settings-btn" id="mobileSettingsBtn" onclick="openSettings()">🎛️</button>
     <button class="mobile-refresh-btn" id="mobileRefreshBtn" onclick="refreshDashboard()">🔄</button>
     <button class="mobile-view-toggle" id="mobileViewToggleBtn" onclick="toggleMobileView()">⬛ Tagesansicht</button>
     <div id="dayNavBar"></div>
@@ -481,6 +526,89 @@
             </div>
             
             <button onclick="doLogin()" class="w-full bg-blue-600 hover:bg-blue-500 py-3 rounded-xl font-black text-white shadow-md uppercase tracking-widest transition-colors">Einloggen</button>
+        </div>
+    </div>
+
+    <div id="settingsModal">
+        <div class="bg-slate-800 p-6 rounded-3xl shadow-2xl w-full max-w-lg max-h-[92vh] flex flex-col border border-slate-600 relative">
+            <button onclick="closeSettings()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-2xl font-bold">×</button>
+            <h3 class="text-xl font-black mb-1 uppercase italic text-blue-400">🎛️ Ansicht anpassen</h3>
+            <p class="text-[9px] text-slate-500 font-bold uppercase mb-4">Gilt nur für dieses Gerät – wird lokal gespeichert</p>
+
+            <div class="overflow-y-auto flex-1 pr-1 space-y-3">
+
+                <div class="grid grid-cols-2 gap-2">
+                    <button class="preset-btn" onclick="applyPreset('desktop')">🖥️ Büro / Desktop</button>
+                    <button class="preset-btn" onclick="applyPreset('tablet')">📱 Tablet Halle</button>
+                    <button class="preset-btn" onclick="applyPreset('tv')">📺 TV-Monitor</button>
+                    <button class="preset-btn" onclick="applyPreset('kompakt')">🔎 Viel auf einmal</button>
+                </div>
+
+                <div class="set-row">
+                    <div class="set-label"><span>Textgröße</span><span class="set-value" id="valText">100 %</span></div>
+                    <input type="range" class="set-range" id="setText" min="70" max="220" step="5" oninput="onSetting('textScale', this.value)">
+                </div>
+
+                <div class="set-row">
+                    <div class="set-label"><span>Zeilenhöhe Maschinen</span><span class="set-value" id="valBadge">38 px</span></div>
+                    <input type="range" class="set-range" id="setBadge" min="26" max="90" step="2" oninput="onSetting('badgeHeight', this.value)">
+                </div>
+
+                <div class="set-row">
+                    <div class="set-label"><span>Spaltenbreite</span><span class="set-value" id="valCol">160 px</span></div>
+                    <input type="range" class="set-range" id="setCol" min="100" max="360" step="10" oninput="onSetting('colWidth', this.value)">
+                </div>
+
+                <div class="set-row">
+                    <div class="set-label"><span>Abstand zwischen Spalten</span><span class="set-value" id="valGap">8 px</span></div>
+                    <input type="range" class="set-range" id="setGap" min="0" max="24" step="2" oninput="onSetting('gridGap', this.value)">
+                </div>
+
+                <div class="set-row">
+                    <div class="set-label"><span>Dichte</span><span class="set-value" id="valDensity">Normal</span></div>
+                    <div class="set-seg" id="setDensity">
+                        <button data-v="kompakt" onclick="onSetting('density','kompakt')">Kompakt</button>
+                        <button data-v="normal" onclick="onSetting('density','normal')">Normal</button>
+                        <button data-v="weit" onclick="onSetting('density','weit')">Weit</button>
+                    </div>
+                </div>
+
+                <div class="set-row set-toggle">
+                    <div>
+                        <div class="set-label"><span>Hoher Kontrast</span></div>
+                        <div class="text-[9px] text-slate-500 font-bold mt-1">Kräftigere Farben für helle Hallen</div>
+                    </div>
+                    <input type="checkbox" id="setContrast" onchange="onSetting('contrast', this.checked)">
+                </div>
+
+                <div class="set-row set-toggle">
+                    <div>
+                        <div class="set-label"><span>Störungs-Blinken</span></div>
+                        <div class="text-[9px] text-slate-500 font-bold mt-1">Aus = ruhiger, spart Leistung</div>
+                    </div>
+                    <input type="checkbox" id="setAnim" onchange="onSetting('animations', this.checked)">
+                </div>
+
+                <div class="set-row set-toggle">
+                    <div>
+                        <div class="set-label"><span>Leere Zeilen ausblenden</span></div>
+                        <div class="text-[9px] text-slate-500 font-bold mt-1">Mitarbeiter ohne Auftrag verstecken</div>
+                    </div>
+                    <input type="checkbox" id="setHideEmpty" onchange="onSetting('hideEmpty', this.checked)">
+                </div>
+
+                <div class="set-row">
+                    <div class="set-label"><span>Sichtbare Mitarbeiter</span><span class="set-value" id="valStaff">alle</span></div>
+                    <div class="flex flex-wrap gap-2 mt-3" id="staffToggleList"></div>
+                    <button onclick="showAllStaff()" class="mt-3 w-full bg-slate-700 hover:bg-slate-600 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest text-white transition-colors">Alle einblenden</button>
+                </div>
+
+            </div>
+
+            <div class="flex gap-3 mt-5 flex-shrink-0">
+                <button onclick="resetSettings()" class="flex-1 bg-slate-700 hover:bg-slate-600 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest text-white transition-colors">Zurücksetzen</button>
+                <button onclick="closeSettings()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest text-white transition-colors">Fertig</button>
+            </div>
         </div>
     </div>
 
@@ -554,6 +682,7 @@
                             <span class="text-[14px] group-open:rotate-180 transition-transform">▼</span>
                         </summary>
                         <div class="space-y-4 pt-2 pb-4 border-b border-slate-800 mb-2">
+                            <button onclick="openSettings()" class="w-full bg-slate-800 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-md border border-slate-600 hover:bg-slate-700 transition">🎛️ Ansicht anpassen</button>
                             <button id="refreshBtn" onclick="refreshDashboard()" class="w-full bg-blue-600/20 text-blue-400 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest border border-blue-500/30 hover:bg-blue-600/40 transition">🔄 Dashboard aktualisieren</button>
                             <div id="lastRefreshInfo" class="text-[9px] text-slate-500 font-bold uppercase text-center -mt-2">Noch nicht aktualisiert</div>
                             <button id="fullscreenBtn" onclick="toggleFullscreen()" class="w-full bg-slate-800 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-md border border-slate-600 hover:bg-slate-700 transition">⛶ Vollbild aktivieren</button>
@@ -629,6 +758,9 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
+        const ROOT = 'rustplan_root';
+        const SETTINGS_KEY = 'ruestplan_ui_v1';
+
         const days = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag"];
         const dayShort = ["Mo", "Di", "Mi", "Do", "Fr"];
         const customStaffColors = { "Lange": "#22c55e", "Saric": "#3b82f6", "Oks": "#ffffff", "Ederle": "#f97316" };
@@ -655,8 +787,323 @@
         let currentUser = null;
         let isRefreshing = false;
 
+        // --- Listener-Verwaltung ---
+        let baseRefs = [];
+        let planRef = null;
+        let loadedStaff = false;
+        let loadedUsers = false;
+
+        // --- Render-Steuerung ---
+        let structureSignature = null;
+
+        // =========================================================
+        //  ANSICHTS-EINSTELLUNGEN (gerätelokal)
+        // =========================================================
+
+        const DEFAULT_SETTINGS = {
+            textScale: 100,
+            badgeHeight: 38,
+            colWidth: 160,
+            gridGap: 8,
+            density: 'normal',
+            contrast: false,
+            animations: true,
+            hideEmpty: false,
+            hiddenStaff: []
+        };
+
+        const PRESETS = {
+            desktop:  { textScale: 100, badgeHeight: 38, colWidth: 160, gridGap: 8,  density: 'normal',  contrast: false, animations: true,  hideEmpty: false },
+            tablet:   { textScale: 125, badgeHeight: 50, colWidth: 170, gridGap: 8,  density: 'normal',  contrast: true,  animations: true,  hideEmpty: false },
+            tv:       { textScale: 175, badgeHeight: 68, colWidth: 260, gridGap: 12, density: 'weit',    contrast: true,  animations: true,  hideEmpty: true  },
+            kompakt:  { textScale: 85,  badgeHeight: 28, colWidth: 120, gridGap: 4,  density: 'kompakt', contrast: false, animations: false, hideEmpty: false }
+        };
+
+        const DENSITY_MAP = {
+            kompakt: { slotPad: 5,  slotGap: 2, badgeGap: 3,  badgePadY: 2, badgePadX: 5 },
+            normal:  { slotPad: 8,  slotGap: 4, badgeGap: 6,  badgePadY: 4, badgePadX: 6 },
+            weit:    { slotPad: 13, slotGap: 8, badgeGap: 10, badgePadY: 7, badgePadX: 10 }
+        };
+
+        let settings = { ...DEFAULT_SETTINGS };
+
+        function loadSettings() {
+            try {
+                const raw = localStorage.getItem(SETTINGS_KEY);
+                if (raw) settings = { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+            } catch (e) {
+                settings = { ...DEFAULT_SETTINGS };
+            }
+            if (!Array.isArray(settings.hiddenStaff)) settings.hiddenStaff = [];
+        }
+
+        function persistSettings() {
+            try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) {}
+        }
+
+        function applySettings() {
+            const r = document.documentElement.style;
+            const s = settings.textScale / 100;
+            const d = DENSITY_MAP[settings.density] || DENSITY_MAP.normal;
+
+            r.setProperty('--font-badge',   Math.round(11 * s) + 'px');
+            r.setProperty('--font-staff',   Math.round(11 * s) + 'px');
+            r.setProperty('--font-dayname', Math.round(10 * s) + 'px');
+            r.setProperty('--font-daydate', Math.round(15 * s) + 'px');
+            r.setProperty('--font-note',    Math.round(9  * s) + 'px');
+            r.setProperty('--note-h',       Math.round(22 * s) + 'px');
+
+            r.setProperty('--badge-min-h', settings.badgeHeight + 'px');
+            r.setProperty('--col-min',     settings.colWidth + 'px');
+            r.setProperty('--grid-gap',    settings.gridGap + 'px');
+
+            r.setProperty('--slot-pad',    d.slotPad + 'px');
+            r.setProperty('--slot-gap',    d.slotGap + 'px');
+            r.setProperty('--badge-gap',   d.badgeGap + 'px');
+            r.setProperty('--badge-pad-y', d.badgePadY + 'px');
+            r.setProperty('--badge-pad-x', d.badgePadX + 'px');
+
+            document.body.classList.toggle('contrast-high', !!settings.contrast);
+            document.body.classList.toggle('no-anim', !settings.animations);
+            document.body.classList.toggle('hide-empty', !!settings.hideEmpty);
+        }
+
+        function visibleStaff() {
+            return staff.filter(s => settings.hiddenStaff.indexOf(s) === -1);
+        }
+
+        function openSettings() {
+            closeMobileSidebar();
+            syncSettingsUI();
+            document.getElementById('settingsModal').style.display = 'flex';
+        }
+
+        function closeSettings() {
+            document.getElementById('settingsModal').style.display = 'none';
+            persistSettings();
+        }
+
+        function syncSettingsUI() {
+            document.getElementById('setText').value = settings.textScale;
+            document.getElementById('setBadge').value = settings.badgeHeight;
+            document.getElementById('setCol').value = settings.colWidth;
+            document.getElementById('setGap').value = settings.gridGap;
+            document.getElementById('setContrast').checked = !!settings.contrast;
+            document.getElementById('setAnim').checked = !!settings.animations;
+            document.getElementById('setHideEmpty').checked = !!settings.hideEmpty;
+
+            document.getElementById('valText').innerText = settings.textScale + ' %';
+            document.getElementById('valBadge').innerText = settings.badgeHeight + ' px';
+            document.getElementById('valCol').innerText = settings.colWidth + ' px';
+            document.getElementById('valGap').innerText = settings.gridGap + ' px';
+
+            const dLabels = { kompakt: 'Kompakt', normal: 'Normal', weit: 'Weit' };
+            document.getElementById('valDensity').innerText = dLabels[settings.density] || 'Normal';
+            document.querySelectorAll('#setDensity button').forEach(b => {
+                b.classList.toggle('active', b.getAttribute('data-v') === settings.density);
+            });
+
+            renderStaffToggles();
+        }
+
+        function renderStaffToggles() {
+            const box = document.getElementById('staffToggleList');
+            if (!box) return;
+            box.innerHTML = staff.map((n, i) => {
+                const shown = settings.hiddenStaff.indexOf(n) === -1;
+                const color = getStaffColor(n, i);
+                return `<label class="staff-toggle" style="color:${color}">
+                    <input type="checkbox" ${shown ? 'checked' : ''} onchange="toggleStaffVisibility('${n.replace(/'/g, "\\'")}', this.checked)">
+                    ${n}
+                </label>`;
+            }).join('');
+            const hidden = settings.hiddenStaff.length;
+            document.getElementById('valStaff').innerText = hidden === 0 ? 'alle' : `${staff.length - hidden} von ${staff.length}`;
+        }
+
+        function toggleStaffVisibility(name, shown) {
+            if (shown) {
+                settings.hiddenStaff = settings.hiddenStaff.filter(n => n !== name);
+            } else if (settings.hiddenStaff.indexOf(name) === -1) {
+                settings.hiddenStaff.push(name);
+            }
+            persistSettings();
+            renderStaffToggles();
+            renderStructure(true);
+        }
+
+        function showAllStaff() {
+            settings.hiddenStaff = [];
+            persistSettings();
+            renderStaffToggles();
+            renderStructure(true);
+        }
+
+        function onSetting(key, value) {
+            if (key === 'textScale' || key === 'badgeHeight' || key === 'colWidth' || key === 'gridGap') {
+                settings[key] = parseInt(value, 10);
+            } else {
+                settings[key] = value;
+            }
+            applySettings();
+            syncSettingsUI();
+            persistSettings();
+
+            if (key === 'hideEmpty') markEmptySlots();
+        }
+
+        function applyPreset(name) {
+            const p = PRESETS[name];
+            if (!p) return;
+            settings = { ...settings, ...p };
+            applySettings();
+            syncSettingsUI();
+            persistSettings();
+            markEmptySlots();
+            showToast('Ansicht übernommen', 'success');
+        }
+
+        function resetSettings() {
+            settings = { ...DEFAULT_SETTINGS, hiddenStaff: [] };
+            applySettings();
+            syncSettingsUI();
+            persistSettings();
+            renderStructure(true);
+            showToast('Ansicht zurückgesetzt', 'success');
+        }
+
         function isMobile() { 
             return window.innerWidth <= 768; 
+        }
+
+        function currentPlanPath() {
+            return `${ROOT}/plan-${currentYear}-W${currentWeek}`;
+        }
+
+        // =========================================================
+        //  DATENZUGRIFF – getrennte Listener statt einem Root-Listener
+        // =========================================================
+
+        function normalizeSlot(v) {
+            if (Array.isArray(v)) return v;
+            if (v && typeof v === 'object') {
+                const out = [];
+                Object.keys(v).forEach(k => {
+                    const i = parseInt(k, 10);
+                    if (!isNaN(i)) out[i] = v[k];
+                });
+                return out;
+            }
+            return [];
+        }
+
+        function attachBaseListeners() {
+            detachBaseListeners();
+
+            const staffRef = db.ref(`${ROOT}/staff`);
+            staffRef.on('value', snap => {
+                staff = snap.val() || ["Mitarbeiter 1"];
+                loadedStaff = true;
+                ensureDefaults();
+                renderStaff();
+                renderStaffToggles();
+                renderStructure();
+            });
+            baseRefs.push(staffRef);
+
+            const machinesRef = db.ref(`${ROOT}/machines`);
+            machinesRef.on('value', snap => {
+                machines = snap.val() || ["Maschine 1"];
+                renderPool();
+            });
+            baseRefs.push(machinesRef);
+
+            const usersRef = db.ref(`${ROOT}/users`);
+            usersRef.on('value', snap => {
+                users = snap.val() || { "Admin": { role: "Admin", password: "admin" } };
+                loadedUsers = true;
+                ensureDefaults();
+
+                // --- Live Sitzungs-Prüfung ---
+                if (currentUser) {
+                    const dbUser = users[currentUser.name];
+                    if (!dbUser || (dbUser.sessionToken && currentUser.sessionToken && dbUser.sessionToken !== currentUser.sessionToken)) {
+                        doLogout(true);
+                        return;
+                    }
+                }
+
+                populateLoginUsers();
+                updateAdminUIVisibility();
+                renderStructure();
+            });
+            baseRefs.push(usersRef);
+        }
+
+        function detachBaseListeners() {
+            baseRefs.forEach(r => r.off());
+            baseRefs = [];
+        }
+
+        function attachPlanListener() {
+            if (planRef) { planRef.off(); planRef = null; }
+
+            plan = {};
+            draw();
+
+            planRef = db.ref(currentPlanPath());
+            planRef.on('value', snap => {
+                const raw = snap.val() || {};
+                const next = {};
+                Object.keys(raw).forEach(k => { next[k] = normalizeSlot(raw[k]); });
+                plan = next;
+                draw();
+            });
+        }
+
+        function detachAll() {
+            detachBaseListeners();
+            if (planRef) { planRef.off(); planRef = null; }
+        }
+
+        // Legt fehlende Benutzer für Mitarbeiter an (nur wenn beides geladen ist)
+        function ensureDefaults() {
+            if (!loadedStaff || !loadedUsers) return;
+            if (!canEditMaster()) return;
+
+            const updates = {};
+            staff.forEach(s => {
+                if (!users[s]) updates[s] = { role: "Mitarbeiter", password: "123" };
+            });
+            if (!users["Admin"]) updates["Admin"] = { role: "Admin", password: "admin" };
+
+            if (Object.keys(updates).length) {
+                db.ref(`${ROOT}/users`).update(updates);
+            }
+        }
+
+        // --- Gezielte Schreibzugriffe ---
+        function saveStaff() { db.ref(`${ROOT}/staff`).set(staff); }
+        function saveMachines() { db.ref(`${ROOT}/machines`).set(machines); }
+        function saveUser(name) { db.ref(`${ROOT}/users/${name}`).set(users[name]); }
+        function removeUser(name) { db.ref(`${ROOT}/users/${name}`).remove(); }
+
+        function savePlanSlot(key) {
+            const arr = plan[key] || [];
+            db.ref(`${currentPlanPath()}/${key}`).set(arr.length ? arr : null);
+        }
+
+        function savePlanSlots(keys) {
+            const updates = {};
+            keys.forEach(k => {
+                const arr = plan[k] || [];
+                updates[k] = arr.length ? arr : null;
+            });
+            db.ref(currentPlanPath()).update(updates);
+        }
+
+        function setPlanField(key, idx, fields) {
+            db.ref(`${currentPlanPath()}/${key}/${idx}`).update(fields);
         }
 
         // --- Dashboard aktualisieren ---
@@ -691,15 +1138,19 @@
             setRefreshBusy(true);
             closeMobileSidebar();
 
-            // KW auf reale Woche prüfen (z.B. nach Wochenwechsel über Nacht)
+            // KW-Merker auf reale Woche zurücksetzen (z.B. nach Wochenwechsel über Nacht)
             const realIso = getIsoYearAndWeek(new Date());
             lastRealIsoYear = realIso.year;
             lastRealIsoWeek = realIso.week;
             window.lastRenderedToday = new Date().toDateString();
 
-            db.ref('rustplan_root').once('value')
+            db.ref(currentPlanPath()).once('value')
                 .then(() => {
-                    listenToDatabase();
+                    detachAll();
+                    attachBaseListeners();
+                    attachPlanListener();
+                    structureSignature = null; // erzwingt sauberen Neuaufbau
+                    renderStructure();
                     markRefreshTime();
                     showToast('Dashboard aktualisiert', 'success');
                 })
@@ -735,7 +1186,10 @@
         // --- Login & Admin Logik ---
         function populateLoginUsers() {
             const select = document.getElementById('loginUser');
-            select.innerHTML = Object.keys(users).map(u => `<option value="${u}">${u}</option>`).join('');
+            const prev = select.value;
+            const names = Object.keys(users);
+            select.innerHTML = names.map(u => `<option value="${u}">${u}</option>`).join('');
+            if (prev && names.indexOf(prev) !== -1) select.value = prev;
         }
 
         function doLogin() {
@@ -748,7 +1202,7 @@
                 if (!token) {
                     token = Date.now();
                     users[user].sessionToken = token;
-                    db.ref(`rustplan_root/users/${user}/sessionToken`).set(token);
+                    db.ref(`${ROOT}/users/${user}/sessionToken`).set(token);
                 }
 
                 currentUser = { name: user, role: users[user].role, sessionToken: token };
@@ -763,6 +1217,7 @@
                 }
                 
                 updateAdminUIVisibility();
+                ensureDefaults();
                 render();
                 showToast(`Willkommen, ${user} (${currentUser.role})`, 'success');
             } else {
@@ -790,7 +1245,7 @@
         function forceLogoutUser(name) {
             if (!users[name]) return;
             users[name].sessionToken = Date.now();
-            save();
+            db.ref(`${ROOT}/users/${name}/sessionToken`).set(users[name].sessionToken);
             showToast(`${name} wurde von allen Geräten abgemeldet`, 'success');
         }
 
@@ -815,9 +1270,13 @@
         }
 
         function saveUsersFromAdmin() {
+            const updates = {};
             Object.keys(users).forEach(name => {
-                const role = document.getElementById(`role-${name}`).value;
+                const roleEl = document.getElementById(`role-${name}`);
                 const pwInput = document.getElementById(`pw-${name}`);
+                if (!roleEl || !pwInput) return;
+
+                const role = roleEl.value;
                 const newPw = pwInput.value;
                 const oldPw = pwInput.getAttribute('data-old-pw');
 
@@ -827,8 +1286,9 @@
 
                 users[name].role = role;
                 users[name].password = newPw;
+                updates[name] = users[name];
             });
-            save();
+            db.ref(`${ROOT}/users`).update(updates);
             closeAdminModal();
             showToast('Benutzer gespeichert', 'success');
         }
@@ -927,6 +1387,10 @@
             const d = new Date(monday);
             d.setDate(monday.getDate() + dayIndex);
             return d;
+        }
+
+        function updateWeekDisplay() {
+            document.getElementById('weekDisplay').innerText = `KW ${currentWeek.toString().padStart(2, '0')}`;
         }
 
         function applySlidePosition(animated) {
@@ -1057,6 +1521,8 @@
 
         function initSwipe() {
             const wrapper = document.getElementById('mainWrapper');
+            // Doppelte Registrierung verhindern (Dauerbetrieb!)
+            removeSwipe();
             wrapper.addEventListener('touchstart', onTouchStart, { passive: true });
             wrapper.addEventListener('touchmove', onTouchMove, { passive: false });
             wrapper.addEventListener('touchend', onTouchEnd, { passive: true });
@@ -1096,6 +1562,9 @@
         }
 
         function initApp() {
+            loadSettings();
+            applySettings();
+
             if ('serviceWorker' in navigator) {
                 const swCode = `self.addEventListener('fetch', function() {});`;
                 const blob = new Blob([swCode], {type: 'application/javascript'});
@@ -1143,7 +1612,11 @@
             
             document.getElementById('statsFrom').value = currentWeek;
             document.getElementById('statsTo').value = currentWeek;
-            listenToDatabase();
+
+            updateWeekDisplay();
+            updateAdminUIVisibility();
+            attachBaseListeners();
+            attachPlanListener();
             markRefreshTime();
             
             db.ref('.info/connected').on('value', function(snap) {
@@ -1170,7 +1643,9 @@
                     if (currentYear === lastRealIsoYear && currentWeek === lastRealIsoWeek) {
                         currentYear = realIso.year;
                         currentWeek = realIso.week;
-                        listenToDatabase();
+                        updateWeekDisplay();
+                        attachPlanListener();
+                        renderStructure();
                     }
                     lastRealIsoYear = realIso.year;
                     lastRealIsoWeek = realIso.week;
@@ -1179,7 +1654,7 @@
                 const todayStr = new Date().toDateString();
                 if (window.lastRenderedToday !== todayStr) {
                     window.lastRenderedToday = todayStr;
-                    render();
+                    renderStructure();
                 }
             }, 60000); 
         }
@@ -1199,9 +1674,12 @@
             const to = parseInt(document.getElementById('statsTo').value);
             const resultDiv = document.getElementById('statsResult');
             resultDiv.innerHTML = '<div class="col-span-2 text-blue-400 animate-pulse text-center py-20 font-black uppercase tracking-widest">KI berechnet Statistiken...</div>';
-            
-            const snapshot = await db.ref('rustplan_root').once('value');
-            const data = snapshot.val() || {};
+
+            if (isNaN(from) || isNaN(to) || to < from) {
+                resultDiv.innerHTML = '<div class="col-span-2 text-rose-400 text-center py-20 font-black uppercase tracking-widest">Ungültiger KW-Bereich</div>';
+                return;
+            }
+
             let stats = { 
                 staffCounts: {}, 
                 machineRuest: {}, 
@@ -1211,15 +1689,23 @@
                 totalStoerung: 0, 
                 details: [] 
             };
-            
-            for (let w = from; w <= to; w++) {
-                const weekKey = `plan-${currentYear}-W${w}`;
-                const weekData = data[weekKey] || {};
+
+            // Nur die benötigten Wochen laden, nicht den kompletten Root
+            const weeks = [];
+            for (let w = from; w <= to; w++) weeks.push(w);
+
+            const snaps = await Promise.all(
+                weeks.map(w => db.ref(`${ROOT}/plan-${currentYear}-W${w}`).once('value'))
+            );
+
+            weeks.forEach((w, i) => {
+                const weekData = snaps[i].val() || {};
                 stats.stoerungenProWoche[w] = 0;
-                
+
                 Object.keys(weekData).forEach(slotKey => {
                     const [day, person] = slotKey.split('-');
-                    weekData[slotKey].forEach(m => {
+                    normalizeSlot(weekData[slotKey]).forEach(m => {
+                        if (!m) return;
                         stats.totalRuest++;
                         stats.machineRuest[m.name] = (stats.machineRuest[m.name] || 0) + 1;
                         stats.staffCounts[person] = (stats.staffCounts[person] || 0) + 1;
@@ -1231,7 +1717,7 @@
                         stats.details.push({ kw: w, tag: day, name: person, maschine: m.name, status: m.status });
                     });
                 });
-            }
+            });
             
             const mid = Math.floor((from + to) / 2);
             let firstHalfS = 0, secondHalfS = 0;
@@ -1275,6 +1761,7 @@
         }
 
         function exportDeepPDF() {
+            if (!globalStats) return showToast('Erst Analyse starten', 'error');
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
             
@@ -1282,16 +1769,19 @@
             doc.text("KI ANALYSEBERICHT", 14, 25);
             doc.setFontSize(10); 
             doc.text(`Zeitraum: KW ${document.getElementById('statsFrom').value} bis ${document.getElementById('statsTo').value}`, 14, 32);
+
+            const bestStaffEntry = Object.entries(globalStats.staffCounts).sort((a,b)=>b[1]-a[1])[0];
+            const mostRuestEntry = Object.entries(globalStats.machineRuest).sort((a,b)=>b[1]-a[1])[0];
             
             doc.autoTable({
                 startY: 40,
                 head: [['Metrik', 'Ergebnis']],
                 body: [
-                    ['Bester Mitarbeiter', globalStats.staffCounts ? Object.entries(globalStats.staffCounts).sort((a,b)=>b[1]-a[1])[0][0] : '-'],
+                    ['Bester Mitarbeiter', bestStaffEntry ? bestStaffEntry[0] : '-'],
                     ['Gesamtzahl Umbaue', globalStats.totalRuest],
                     ['Gesamtzahl Störungen', globalStats.totalStoerung],
                     ['Störungstrend', globalStats.trend],
-                    ['Häufigster Umbau (Maschine)', Object.entries(globalStats.machineRuest).sort((a,b)=>b[1]-a[1])[0][0]]
+                    ['Häufigster Umbau (Maschine)', mostRuestEntry ? mostRuestEntry[0] : '-']
                 ],
                 theme: 'striped', 
                 headStyles: {fillColor: [30, 41, 59]}
@@ -1335,67 +1825,34 @@
             btn.className = `w-full py-2 rounded-xl font-black text-[10px] uppercase ${isEditLocked ? 'bg-rose-600' : 'bg-emerald-600'} text-white shadow-lg`;
         }
 
-        function listenToDatabase() {
-            db.ref('rustplan_root').off(); 
-            db.ref('rustplan_root').on('value', (snapshot) => {
-                const data = snapshot.val() || {};
-                staff = data.staff || ["Mitarbeiter 1"];
-                machines = data.machines || ["Maschine 1"];
-                plan = data[`plan-${currentYear}-W${currentWeek}`] || {};
-                users = data.users || { "Admin": { role: "Admin", password: "admin" } };
+        // =========================================================
+        //  RENDERING – Struktur (selten) vs. Badges (häufig)
+        // =========================================================
 
-                let usersChanged = false;
-                
-                staff.forEach(s => {
-                    if (!users[s]) {
-                        users[s] = { role: "Mitarbeiter", password: "123" };
-                        usersChanged = true;
-                    }
-                });
-                
-                if (!users["Admin"]) {
-                    users["Admin"] = { role: "Admin", password: "admin" };
-                    usersChanged = true;
-                }
-                
-                if (usersChanged && canEditMaster()) {
-                    save();
-                }
-
-                // --- Live Sitzungs-Prüfung ---
-                if (currentUser) {
-                    const dbUser = users[currentUser.name];
-                    if (!dbUser || (dbUser.sessionToken && currentUser.sessionToken && dbUser.sessionToken !== currentUser.sessionToken)) {
-                        doLogout(true);
-                        return;
-                    }
-                }
-
-                document.getElementById('weekDisplay').innerText = `KW ${currentWeek.toString().padStart(2, '0')}`;
-
-                populateLoginUsers();                
-                updateAdminUIVisibility();
-                
-                render(); 
-            });
-        }
-
-        function save() {
-            db.ref('rustplan_root').update({
-                [`/plan-${currentYear}-W${currentWeek}`]: plan,
-                [`/staff`]: staff,
-                [`/machines`]: machines,
-                [`/users`]: users
-            });
-        }
-
+        // Erzwungener Komplett-Neuaufbau (Login/Logout/Sperre)
         function render() {
-            const main = document.getElementById('mainGrid');
-            main.innerHTML = '';
-            
+            renderStructure(true);
+        }
+
+        function renderStructure(force = false) {
             const todayStr = new Date().toDateString();            
             const realIso = getIsoYearAndWeek(new Date());
             const isAW = (currentWeek === realIso.week && currentYear === realIso.year);
+            const shownStaff = visibleStaff();
+            const signature = `${currentYear}-${currentWeek}|${todayStr}|${shownStaff.join('~')}`;
+
+            if (!force && signature === structureSignature) {
+                // Struktur unverändert – nur Inhalte neu zeichnen
+                draw();
+                renderStaff();
+                renderPool();
+                applyExpandedColumn();
+                return;
+            }
+            structureSignature = signature;
+
+            const main = document.getElementById('mainGrid');
+            main.innerHTML = '';
             const months = ["Jan","Feb","Mär","Apr","Mai","Jun","Jul","Aug","Sep","Okt","Nov","Dez"];
 
             days.forEach((day, dayIdx) => {
@@ -1405,7 +1862,7 @@
                 const monthName = months[dayDate.getMonth()];
 
                 const col = document.createElement('div');
-                col.className = 'day-column flex flex-col gap-2 min-w-0';
+                col.className = 'day-column flex flex-col min-w-0';
                 col.dataset.dayIndex = dayIdx;
 
                 const header = document.createElement('div');
@@ -1419,12 +1876,12 @@
                 `;
                 col.appendChild(header);
 
-                staff.forEach((person, idx) => {
+                shownStaff.forEach((person) => {
                     const key = `${day}-${person}`;
-                    const color = getStaffColor(person, idx);
+                    const color = getStaffColor(person, staff.indexOf(person));
                     
                     const slot = document.createElement('div');
-                    slot.className = `bg-slate-900/40 rounded-lg p-2 flex flex-col border border-slate-800/50 mb-1`;
+                    slot.className = `plan-slot bg-slate-900/40 rounded-lg flex flex-col border border-slate-800/50`;
                     slot.style.borderLeft = `3px solid ${color}`;
                     slot.setAttribute('data-key', key);
 
@@ -1456,17 +1913,20 @@
                                     dragSrc = null; 
                                     return; 
                                 }
+                                if (!plan[srcKey] || !plan[srcKey][srcIdx]) { dragSrc = null; return; }
                                 const item = plan[srcKey].splice(srcIdx, 1)[0];
                                 if (!plan[targetKey]) plan[targetKey] = [];
                                 plan[targetKey].push(item);
                                 dragSrc = null;
-                                save();
+                                draw();
+                                savePlanSlots([srcKey, targetKey]);
                             } else {
                                 const name = e.dataTransfer.getData("text");
                                 if (!name) return;
                                 if (!plan[targetKey]) plan[targetKey] = [];
                                 plan[targetKey].push({ name, status: 'eingeplant' });
-                                save();
+                                draw();
+                                savePlanSlot(targetKey);
                             }
                         });
                     }
@@ -1491,6 +1951,13 @@
             applyExpandedColumn();
         }
 
+        function markEmptySlots() {
+            document.querySelectorAll('[data-key]').forEach(el => {
+                const container = document.getElementById(el.getAttribute('data-key'));
+                el.classList.toggle('slot-empty', !container || container.children.length === 0);
+            });
+        }
+
         function draw() {
             document.querySelectorAll('[data-key]').forEach(el => {
                 const key = el.getAttribute('data-key');
@@ -1500,6 +1967,8 @@
                 container.innerHTML = '';
                 
                 (plan[key] || []).forEach((m, idx) => {
+                    if (!m) return;
+
                     const b = document.createElement('div');
                     b.className = `machine-badge status-${m.status || 'eingeplant'}`;
 
@@ -1542,8 +2011,9 @@
                         a.disabled = !canEditStatus() || isEditLocked;
                         a.onchange = (e) => { 
                             if (!canEditStatus() || isEditLocked) return;
+                            if (!plan[key] || !plan[key][idx]) return;
                             plan[key][idx].note = e.target.value; 
-                            save(); 
+                            setPlanField(key, idx, { note: e.target.value });
                         };
                         b.appendChild(a);
                     }
@@ -1559,19 +2029,26 @@
                     container.appendChild(b);
                 });
             });
+
+            markEmptySlots();
         }
 
         function toggleStatus(k, i) {
+            if (!plan[k] || !plan[k][i]) return;
             const s = ['eingeplant', 'umbau', 'erledigt', 'stoerung'];
             const cur = plan[k][i].status || 'eingeplant';
-            plan[k][i].status = s[(s.indexOf(cur) + 1) % 4];
-            save();
+            const next = s[(s.indexOf(cur) + 1) % 4];
+            plan[k][i].status = next;
+            draw();
+            setPlanField(k, i, { status: next });
         }
 
         function removeFromPlan(k, i) { 
             if (canEditMaster() && !isEditLocked) { 
+                if (!plan[k] || !plan[k][i]) return;
                 plan[k].splice(i, 1); 
-                save(); 
+                draw();
+                savePlanSlot(k); 
             } 
         }
         
@@ -1581,31 +2058,40 @@
             const iso = getIsoYearAndWeek(d);
             currentYear = iso.year;
             currentWeek = iso.week;
-            listenToDatabase(); 
+            updateWeekDisplay();
+            attachPlanListener();
+            renderStructure(); 
         }
         
         function goToCurrentWeek() { 
             const iso = getIsoYearAndWeek(new Date());
             currentYear = iso.year;
             currentWeek = iso.week;
-            listenToDatabase(); 
+            updateWeekDisplay();
+            attachPlanListener();
+            renderStructure(); 
         }
 
         function toggleNoteInput(k, i) { 
-            if (plan[k][i].note === undefined) {
-                plan[k][i].note = ""; 
-            }
-            plan[k][i].showNote = !plan[k][i].showNote; 
-            save(); 
+            if (!plan[k] || !plan[k][i]) return;
+            const item = plan[k][i];
+            if (item.note === undefined) item.note = "";
+            item.showNote = !item.showNote; 
+            draw();
+            setPlanField(k, i, { note: item.note, showNote: item.showNote });
         }
         
         function addStaff() { 
             if (!canEditMaster()) return showToast('Nur Admin / Planer!', 'error');
             const v = document.getElementById('newStaff').value.trim(); 
             if(v) { 
+                if (staff.indexOf(v) !== -1) return showToast('Name existiert bereits', 'error');
                 staff.push(v); 
-                if (!users[v]) users[v] = { role: 'Mitarbeiter', password: '123' };
-                save(); 
+                saveStaff();
+                if (!users[v]) {
+                    users[v] = { role: 'Mitarbeiter', password: '123' };
+                    saveUser(v);
+                }
                 document.getElementById('newStaff').value = ''; 
                 showToast('Personal hinzugefügt', 'success');
             } 
@@ -1616,7 +2102,7 @@
             const v = document.getElementById('newMachine').value.trim(); 
             if(v) { 
                 machines.push(v); 
-                save(); 
+                saveMachines();
                 document.getElementById('newMachine').value = ''; 
                 showToast('Maschine hinzugefügt', 'success');
             } 
@@ -1626,7 +2112,7 @@
             document.getElementById('staffList').innerHTML = staff.map(n => `
                 <div class="admin-item bg-slate-800 px-2 py-1 rounded text-[10px] flex items-center gap-2">
                     ${n}
-                    <span onclick="if(canEditMaster()){ askConfirm('Personal löschen', '${n} wirklich entfernen?', () => { staff=staff.filter(s=>s!=='${n}'); delete users['${n}']; save(); }); } else { showToast('Keine Berechtigung', 'error'); }" class="delete-btn">×</span>
+                    <span onclick="if(canEditMaster()){ askConfirm('Personal löschen', '${n} wirklich entfernen?', () => { staff=staff.filter(s=>s!=='${n}'); delete users['${n}']; saveStaff(); removeUser('${n}'); }); } else { showToast('Keine Berechtigung', 'error'); }" class="delete-btn">×</span>
                 </div>
             `).join(''); 
         }
@@ -1638,7 +2124,7 @@
                     ${!mobile ? `draggable="true" ondragstart="if(!canEditMaster()){event.preventDefault(); return showToast('Keine Berechtigung', 'error');} dragSrc=null; event.dataTransfer.setData('text', '${m}')"` : ''}
                     class="admin-item bg-slate-800 p-2 rounded text-[9px] flex justify-between items-center ${!mobile ? 'cursor-move' : 'cursor-default'}">
                     <span>⚙️ ${m}</span>
-                    <span onclick="if(canEditMaster()){ askConfirm('Maschine löschen', '${m} wirklich entfernen?', () => { machines=machines.filter(x=>x!=='${m}'); save(); }); } else { showToast('Keine Berechtigung', 'error'); }" class="delete-btn">×</span>
+                    <span onclick="if(canEditMaster()){ askConfirm('Maschine löschen', '${m} wirklich entfernen?', () => { machines=machines.filter(x=>x!=='${m}'); saveMachines(); }); } else { showToast('Keine Berechtigung', 'error'); }" class="delete-btn">×</span>
                 </div>
             `).join(''); 
         }

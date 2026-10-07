@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="de">
 <head>
@@ -414,7 +413,7 @@
         
         @media (max-width: 768px) { .delete-btn { opacity: 0.7; } }
         
-        #pwModal, #statsModal, #confirmModal, #loginModal, #adminUserModal, #settingsModal { 
+        #pwModal, #statsModal, #confirmModal, #loginModal, #adminUserModal, #settingsModal, #logModal { 
             display: none; 
             position: fixed; 
             inset: 0; 
@@ -429,13 +428,14 @@
         #loginModal { z-index: 300; }
         #adminUserModal { z-index: 250; }
         #settingsModal { z-index: 200; }
-        #pwModal > div, #statsModal > div, #confirmModal > div, #settingsModal > div { max-width: 95vw; max-height: 95vh; overflow-y: auto; }
+        #pwModal > div, #statsModal > div, #confirmModal > div, #settingsModal > div, #logModal > div { max-width: 95vw; max-height: 95vh; overflow-y: auto; }
         #confirmModal { z-index: 150; }
         
         @media (max-width: 768px) { 
             #statsModal > div { width: 100% !important; padding: 1rem; border-radius: 1rem; } 
             #statsResult { grid-template-columns: 1fr !important; } 
             #settingsModal > div { width: 100% !important; padding: 1.25rem; border-radius: 1rem; }
+            #logModal > div { width: 100% !important; padding: 1.25rem; border-radius: 1rem; }
         }
 
         /* Einstellungen: Regler & Schalter */
@@ -452,6 +452,49 @@
         .preset-btn:hover { background: #334155; color: #fff; }
         .staff-toggle { display: flex; align-items: center; gap: 8px; background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 6px 10px; font-size: 11px; font-weight: 700; cursor: pointer; }
         .staff-toggle input { accent-color: #3b82f6; width: 16px; height: 16px; }
+
+        /* ── Nachverfolgung ── */
+        .log-day {
+            font-size: 10px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #60a5fa;
+            margin: 10px 0 4px 2px;
+            padding: 4px 0;
+            position: sticky;
+            top: 0;
+            background: #1e293b;
+            z-index: 1;
+        }
+        .log-entry {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-left-width: 4px;
+            border-radius: 10px;
+            padding: 8px 10px;
+            margin-bottom: 4px;
+            font-size: 11px;
+        }
+        .log-time {
+            font-variant-numeric: tabular-nums;
+            font-weight: 900;
+            color: #94a3b8;
+            flex-shrink: 0;
+            width: 62px;
+        }
+        .log-cat {
+            font-size: 9px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 1px 6px;
+            border-radius: 999px;
+            white-space: nowrap;
+        }
         
         .today-highlight { 
             background-color: #3b82f6 !important; 
@@ -645,6 +688,32 @@
         </div>
     </div>
 
+    <div id="logModal">
+        <div class="bg-slate-800 p-6 rounded-3xl shadow-2xl w-full max-w-3xl max-h-[92vh] flex flex-col border border-slate-600 relative">
+            <button onclick="closeLog()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-2xl font-bold">×</button>
+            <h3 class="text-xl font-black mb-1 uppercase italic text-blue-400">📜 Nachverfolgung</h3>
+            <p class="text-[9px] text-slate-500 font-bold uppercase mb-4">Alle Änderungen der letzten 1,5 Wochen – ältere Einträge werden automatisch gelöscht</p>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-2 mb-3 flex-shrink-0">
+                <select id="logFilterUser" class="admin-input" onchange="renderLog()">
+                    <option value="">Alle Benutzer</option>
+                </select>
+                <select id="logFilterCat" class="admin-input" onchange="renderLog()">
+                    <option value="">Alle Bereiche</option>
+                    <option value="plan">Planung</option>
+                    <option value="status">Status</option>
+                    <option value="notiz">Notizen</option>
+                    <option value="stamm">Personal / Maschinen</option>
+                    <option value="benutzer">Benutzer & Rechte</option>
+                </select>
+                <input type="text" id="logSearch" class="admin-input" placeholder="Suche (Maschine, Name, Tag...)" oninput="renderLog()">
+            </div>
+
+            <div id="logCount" class="text-[9px] text-slate-500 font-bold uppercase mb-2 flex-shrink-0"></div>
+            <div id="logList" class="overflow-y-auto flex-1 pr-1"></div>
+        </div>
+    </div>
+
     <div id="adminUserModal">
         <div class="bg-slate-800 p-6 rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col border border-slate-600 relative">
             <button onclick="closeAdminModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-2xl font-bold">×</button>
@@ -720,6 +789,7 @@
                             <div id="lastRefreshInfo" class="text-[9px] text-slate-500 font-bold uppercase text-center -mt-2">Noch nicht aktualisiert</div>
                             <button id="fullscreenBtn" onclick="toggleFullscreen()" class="w-full bg-slate-800 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-md border border-slate-600 hover:bg-slate-700 transition">⛶ Vollbild aktivieren</button>
                             <button onclick="if(canEditMaster()) { openStats() } else { showToast('Keine Berechtigung (nur Admin/Planer)', 'error') }" class="w-full bg-gradient-to-br from-indigo-600 to-blue-700 py-3 rounded-xl font-black uppercase italic tracking-tighter shadow-xl">🤖 KI Statistik</button>
+                            <button onclick="openLog()" class="w-full bg-slate-800 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-md border border-slate-600 hover:bg-slate-700 transition">📜 Nachverfolgung</button>
                             <button id="adminMenuBtn" onclick="openAdminModal()" class="w-full bg-rose-600/20 text-rose-400 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest border border-rose-500/30 hover:bg-rose-600/40 transition hidden">⚙️ Admin Bereich</button>
                             <div class="bg-slate-800 p-4 rounded-2xl border border-slate-600 text-center">
                                 <span class="text-[9px] font-black uppercase text-slate-500 block mb-2">Planungsschutz</span>
@@ -795,6 +865,18 @@
         const ROOT = 'rustplan_root';
         const SETTINGS_KEY = 'ruestplan_ui_v1';
 
+        // --- Nachverfolgung ---
+        const LOG_PATH = `${ROOT}/log`;
+        const LOG_RETENTION_MS = 10.5 * 24 * 60 * 60 * 1000; // 1,5 Wochen
+        const LOG_CATS = {
+            plan:     { label: 'Planung',    color: '#3b82f6' },
+            status:   { label: 'Status',     color: '#f59e0b' },
+            notiz:    { label: 'Notiz',      color: '#facc15' },
+            stamm:    { label: 'Stammdaten', color: '#8b5cf6' },
+            benutzer: { label: 'Benutzer',   color: '#f43f5e' }
+        };
+        const STATUS_LABELS = { eingeplant: 'Eingeplant', umbau: 'Umbau', erledigt: 'Erledigt', stoerung: 'Störung' };
+
         const days = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag"];
         const dayShort = ["Mo", "Di", "Mi", "Do", "Fr"];
         const customStaffColors = { "Lange": "#22c55e", "Saric": "#3b82f6", "Oks": "#ffffff", "Ederle": "#f97316" };
@@ -831,6 +913,10 @@
         let loadedStaff = false;
         let loadedUsers = false;
 
+        // --- Nachverfolgung (Anzeige) ---
+        let logRef = null;
+        let logEntries = [];
+
         // --- Render-Steuerung ---
         let structureSignature = null;
 
@@ -855,6 +941,158 @@
             const m = Math.round(ms / 60000);
             if (m < 60) return `${m} min`;
             return `${Math.floor(m/60)}:${String(m%60).padStart(2,'0')} h`;
+        }
+
+        // =========================================================
+        //  NACHVERFOLGUNG – wer hat wann was geändert
+        // =========================================================
+
+        function escapeHtml(str) {
+            return String(str == null ? '' : str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        // "Montag-Saric" → "Montag 05.10. / Saric"
+        function slotLabel(key) {
+            const i = key.indexOf('-');
+            if (i === -1) return key;
+            const day = key.slice(0, i);
+            const person = key.slice(i + 1);
+            const dayIdx = days.indexOf(day);
+            if (dayIdx === -1) return `${day} / ${person}`;
+            const d = getDayDate(dayIdx);
+            const dd = d.getDate().toString().padStart(2, '0');
+            const mm = (d.getMonth() + 1).toString().padStart(2, '0');
+            return `${day} ${dd}.${mm}. / ${person}`;
+        }
+
+        function logChange(cat, action, details, withKw) {
+            if (!currentUser) return;
+            const entry = {
+                ts: SERVER_TS,
+                user: currentUser.name,
+                role: currentUser.role || '',
+                cat: cat,
+                action: action,
+                details: String(details || '').slice(0, 300)
+            };
+            if (withKw) entry.kw = `KW ${String(currentWeek).padStart(2, '0')}/${currentYear}`;
+            db.ref(LOG_PATH).push(entry).catch(() => {});
+        }
+
+        // Einträge älter als 1,5 Wochen löschen
+        function cleanupLog() {
+            const cutoff = serverNow() - LOG_RETENTION_MS;
+            db.ref(LOG_PATH).orderByChild('ts').endAt(cutoff).once('value')
+                .then(snap => {
+                    const updates = {};
+                    snap.forEach(c => { updates[c.key] = null; });
+                    if (Object.keys(updates).length) db.ref(LOG_PATH).update(updates);
+                })
+                .catch(() => {});
+        }
+
+        function openLog() {
+            if (!canEditMaster()) return showToast('Keine Berechtigung (nur Admin/Planer)', 'error');
+            closeMobileSidebar();
+            document.getElementById('logModal').style.display = 'flex';
+            document.getElementById('logList').innerHTML = '<div class="text-blue-400 animate-pulse text-center py-16 font-black uppercase tracking-widest text-xs">Lade Protokoll...</div>';
+            document.getElementById('logCount').innerText = '';
+
+            if (logRef) { logRef.off(); logRef = null; }
+            const cutoff = serverNow() - LOG_RETENTION_MS;
+            logRef = db.ref(LOG_PATH).orderByChild('ts').startAt(cutoff);
+            logRef.on('value', snap => {
+                const arr = [];
+                snap.forEach(c => {
+                    const v = c.val();
+                    if (v) arr.push(v);
+                });
+                arr.sort((a, b) => (b.ts || 0) - (a.ts || 0));
+                logEntries = arr;
+                renderLog();
+            }, () => {
+                document.getElementById('logList').innerHTML = '<div class="text-rose-400 text-center py-16 font-black uppercase tracking-widest text-xs">Protokoll konnte nicht geladen werden</div>';
+            });
+        }
+
+        function closeLog() {
+            document.getElementById('logModal').style.display = 'none';
+            if (logRef) { logRef.off(); logRef = null; }
+            logEntries = [];
+        }
+
+        function renderLog() {
+            const list = document.getElementById('logList');
+            if (!list) return;
+
+            // Benutzer-Filter füllen (Auswahl beibehalten)
+            const sel = document.getElementById('logFilterUser');
+            const prev = sel.value;
+            const names = Array.from(new Set([
+                ...Object.keys(users),
+                ...logEntries.map(e => e.user).filter(Boolean)
+            ])).sort((a, b) => a.localeCompare(b, 'de'));
+            sel.innerHTML = '<option value="">Alle Benutzer</option>' +
+                names.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
+            sel.value = names.indexOf(prev) !== -1 ? prev : '';
+
+            const fUser = sel.value;
+            const fCat = document.getElementById('logFilterCat').value;
+            const q = document.getElementById('logSearch').value.toLowerCase().trim();
+            const cutoff = serverNow() - LOG_RETENTION_MS;
+
+            const filtered = logEntries.filter(e => {
+                if (!e.ts || e.ts < cutoff) return false;
+                if (fUser && e.user !== fUser) return false;
+                if (fCat && e.cat !== fCat) return false;
+                if (q) {
+                    const hay = `${e.user || ''} ${e.action || ''} ${e.details || ''} ${e.kw || ''}`.toLowerCase();
+                    if (hay.indexOf(q) === -1) return false;
+                }
+                return true;
+            });
+
+            document.getElementById('logCount').innerText = `${filtered.length} ${filtered.length === 1 ? 'Eintrag' : 'Einträge'}`;
+
+            if (!filtered.length) {
+                list.innerHTML = '<div class="text-slate-500 text-center py-16 font-black uppercase tracking-widest text-xs">Keine Einträge</div>';
+                return;
+            }
+
+            let html = '';
+            let lastDay = '';
+            filtered.forEach(e => {
+                const d = new Date(e.ts);
+                const dayStr = d.toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' });
+                if (dayStr !== lastDay) {
+                    html += `<div class="log-day">${dayStr}</div>`;
+                    lastDay = dayStr;
+                }
+                const time = d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                const cat = LOG_CATS[e.cat] || { label: e.cat || '–', color: '#64748b' };
+                const sIdx = staff.indexOf(e.user);
+                const uColor = sIdx !== -1 ? getStaffColor(e.user, sIdx) : '#e2e8f0';
+
+                html += `
+                    <div class="log-entry" style="border-left-color:${cat.color}">
+                        <div class="log-time">${time}</div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="font-black" style="color:${uColor}">${escapeHtml(e.user || '?')}</span>
+                                <span class="log-cat" style="background:${cat.color}26;color:${cat.color};border:1px solid ${cat.color}66">${escapeHtml(cat.label)}</span>
+                                <span class="font-bold text-white">${escapeHtml(e.action || '')}</span>
+                                ${e.kw ? `<span class="text-[9px] text-slate-500 font-bold">${escapeHtml(e.kw)}</span>` : ''}
+                            </div>
+                            ${e.details ? `<div class="text-slate-300 mt-0.5 break-words">${escapeHtml(e.details)}</div>` : ''}
+                        </div>
+                    </div>`;
+            });
+            list.innerHTML = html;
         }
 
         // =========================================================
@@ -1302,6 +1540,7 @@
             document.getElementById('loginPw').value = '';
             document.getElementById('keepLoggedIn').checked = false;
             document.getElementById('loginModal').style.display = 'flex';
+            closeLog();
             
             updateAdminUIVisibility();
             render();
@@ -1315,6 +1554,7 @@
             if (!users[name]) return;
             users[name].sessionToken = Date.now();
             db.ref(`${ROOT}/users/${name}/sessionToken`).set(users[name].sessionToken);
+            logChange('benutzer', 'Von allen Geräten abgemeldet', name);
             showToast(`${name} wurde von allen Geräten abgemeldet`, 'success');
         }
 
@@ -1348,9 +1588,17 @@
                 const role = roleEl.value;
                 const newPw = pwInput.value;
                 const oldPw = pwInput.getAttribute('data-old-pw');
+                const oldRole = users[name].role;
 
                 if (newPw !== oldPw) {
                     users[name].sessionToken = Date.now();
+                }
+
+                if (role !== oldRole) {
+                    logChange('benutzer', 'Rolle geändert', `${name}: ${oldRole || '–'} → ${role}`);
+                }
+                if (newPw !== oldPw) {
+                    logChange('benutzer', 'Passwort geändert', name);
                 }
 
                 users[name].role = role;
@@ -1695,6 +1943,10 @@
             attachPlanListener();
             startTimeTicker();
             markRefreshTime();
+
+            // Nachverfolgung: alte Einträge (> 1,5 Wochen) aufräumen
+            setTimeout(cleanupLog, 5000);
+            setInterval(cleanupLog, 60 * 60 * 1000);
             
             db.ref('.info/connected').on('value', function(snap) {
                 const statusEl = document.getElementById('connectionStatus');
@@ -2114,6 +2366,7 @@
                                 dragSrc = null;
                                 draw();
                                 savePlanSlots([srcKey, targetKey]);
+                                logChange('plan', 'Verschoben', `${item && item.name ? item.name : '?'}: ${slotLabel(srcKey)} → ${slotLabel(targetKey)}`, true);
                             } else {
                                 const name = e.dataTransfer.getData("text");
                                 if (!name) return;
@@ -2121,6 +2374,7 @@
                                 plan[targetKey].push({ name, status: 'eingeplant' });
                                 draw();
                                 savePlanSlot(targetKey);
+                                logChange('plan', 'Eingeplant', `${name} → ${slotLabel(targetKey)}`, true);
                             }
                         });
                     }
@@ -2206,8 +2460,18 @@
                         a.onchange = (e) => { 
                             if (!canEditStatus() || isEditLocked) return;
                             if (!plan[key] || !plan[key][idx]) return;
-                            plan[key][idx].note = e.target.value; 
-                            setPlanField(key, idx, { note: e.target.value });
+                            const oldNote = plan[key][idx].note || '';
+                            const newNote = e.target.value;
+                            plan[key][idx].note = newNote; 
+                            setPlanField(key, idx, { note: newNote });
+                            if (oldNote !== newNote) {
+                                logChange(
+                                    'notiz',
+                                    newNote ? (oldNote ? 'Notiz geändert' : 'Notiz hinzugefügt') : 'Notiz gelöscht',
+                                    `${m.name} · ${slotLabel(key)}${newNote ? ': "' + newNote + '"' : ''}`,
+                                    true
+                                );
+                            }
                         };
                         b.appendChild(a);
                     }
@@ -2282,14 +2546,19 @@
 
             draw();
             setPlanField(k, i, fields);
+
+            let det = `${item.name} · ${slotLabel(k)}: ${STATUS_LABELS[cur] || cur} → ${STATUS_LABELS[next] || next}`;
+            if (next === 'erledigt' && item.dauerMs) det += ` (Rüstdauer ${formatDurShort(item.dauerMs)})`;
+            logChange('status', 'Status geändert', det, true);
         }
 
         function removeFromPlan(k, i) { 
             if (canEditMaster() && !isEditLocked) { 
                 if (!plan[k] || !plan[k][i]) return;
-                plan[k].splice(i, 1); 
+                const removed = plan[k].splice(i, 1)[0]; 
                 draw();
                 savePlanSlot(k); 
+                logChange('plan', 'Entfernt', `${removed && removed.name ? removed.name : '?'} · ${slotLabel(k)}`, true);
             } 
         }
         
@@ -2334,6 +2603,7 @@
                     saveUser(v);
                 }
                 document.getElementById('newStaff').value = ''; 
+                logChange('stamm', 'Personal hinzugefügt', v);
                 showToast('Personal hinzugefügt', 'success');
             } 
         }
@@ -2345,6 +2615,7 @@
                 machines.push(v); 
                 saveMachines();
                 document.getElementById('newMachine').value = ''; 
+                logChange('stamm', 'Maschine hinzugefügt', v);
                 showToast('Maschine hinzugefügt', 'success');
             } 
         }
@@ -2353,7 +2624,7 @@
             document.getElementById('staffList').innerHTML = staff.map(n => `
                 <div class="admin-item bg-slate-800 px-2 py-1 rounded text-[10px] flex items-center gap-2">
                     ${n}
-                    <span onclick="if(canEditMaster()){ askConfirm('Personal löschen', '${n} wirklich entfernen?', () => { staff=staff.filter(s=>s!=='${n}'); delete users['${n}']; saveStaff(); removeUser('${n}'); }); } else { showToast('Keine Berechtigung', 'error'); }" class="delete-btn">×</span>
+                    <span onclick="if(canEditMaster()){ askConfirm('Personal löschen', '${n} wirklich entfernen?', () => { staff=staff.filter(s=>s!=='${n}'); delete users['${n}']; saveStaff(); removeUser('${n}'); logChange('stamm', 'Personal entfernt', '${n}'); }); } else { showToast('Keine Berechtigung', 'error'); }" class="delete-btn">×</span>
                 </div>
             `).join(''); 
         }
@@ -2365,7 +2636,7 @@
                     ${!mobile ? `draggable="true" ondragstart="if(!canEditMaster()){event.preventDefault(); return showToast('Keine Berechtigung', 'error');} dragSrc=null; event.dataTransfer.setData('text', '${m}')"` : ''}
                     class="admin-item bg-slate-800 p-2 rounded text-[9px] flex justify-between items-center ${!mobile ? 'cursor-move' : 'cursor-default'}">
                     <span>⚙️ ${m}</span>
-                    <span onclick="if(canEditMaster()){ askConfirm('Maschine löschen', '${m} wirklich entfernen?', () => { machines=machines.filter(x=>x!=='${m}'); saveMachines(); }); } else { showToast('Keine Berechtigung', 'error'); }" class="delete-btn">×</span>
+                    <span onclick="if(canEditMaster()){ askConfirm('Maschine löschen', '${m} wirklich entfernen?', () => { machines=machines.filter(x=>x!=='${m}'); saveMachines(); logChange('stamm', 'Maschine entfernt', '${m}'); }); } else { showToast('Keine Berechtigung', 'error'); }" class="delete-btn">×</span>
                 </div>
             `).join(''); 
         }
